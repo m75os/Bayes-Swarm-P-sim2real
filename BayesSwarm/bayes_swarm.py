@@ -11,30 +11,45 @@ from scipy.stats import norm
 
 from pyswarm import pso
 
-
 from BayesSwarm.gp_modeling import GpModeling
 from BayesSwarm.gpy_modeling import GpyModeling
 from BayesSwarm.util import *
 
-
 class BayesSwarm:
-    def __init__(self, robot, source, time_max, local_penalizing_coef,
-                 bayes_swarm_mode="local-penalty", alpha_mode="adaptive",
-                 decision_horizon_mode="constant", alpha=0.1, beta=1,
-                 optimizers=["COBYLA","L-BFGS-B"], debug=False, time_profiling_enable=False,
-                 depot_mode="single-depot"):
+    def __init__(   self, 
+                    robot, 
+                    source, 
+                    time_max, 
+                    local_penalizing_coef,
+                    bayes_swarm_mode="local-penalty", 
+                    alpha_mode="adaptive",
+                    decision_horizon_mode="constant", 
+                    alpha=0.1, 
+                    beta=1, 
+                    optimizers=["COBYLA","L-BFGS-B"], 
+                    debug=False, 
+                    time_profiling_enable=False,
+                    depot_mode="single-depot"):
+
         self.time_profiling_enable = time_profiling_enable
         if self.time_profiling_enable:
-            self.time_profiling = {"data_size": [], "belief_update": [], "cal_expected_target": [],
-                                    "cal_next_location": [], "overal_time": [], "mission_time": []} 
+            self.time_profiling = { "data_size": [], 
+                                    "belief_update": [], 
+                                    "cal_expected_target": [],
+                                    "cal_next_location": [], 
+                                    "overal_time": [], 
+                                    "mission_time": []} 
+
         self.depot_mode = depot_mode
         self.debug = debug
         self.time_max = time_max
+
         self.safe_distance = 0.1
         self.min_distance_to_fake_source = 100
-        self.beta = beta
         self.min_dist_max = 100
         self.min_distance_to_xbest = self.min_dist_max
+
+        self.beta = beta
         self.is_non_batch_mode = True
 
         # Having noise help the stability of the GPR training (avoid zero covariance)
@@ -44,7 +59,7 @@ class BayesSwarm:
         self.source = source
         self.robot_id = self.robot.get_robot_id()
 
-        ## Beign: Solver Analysis
+        ## Begin: Solver Analysis
         ## robot_id_for_analysis = 2
         self.time_threshold = 0
         self.main_optimizer_analysis_enable = False
@@ -65,19 +80,23 @@ class BayesSwarm:
         self.is_estimated_L = False
         self.is_estimated_M = True
         self.is_knowledge_per_meter = False
+
         self.bayes_swarm_mode = bayes_swarm_mode
         self.alpha = alpha
         self.alpha_mode = alpha_mode
         self.decision_horizon_mode = decision_horizon_mode 
+
         self.local_penalizing_coef = local_penalizing_coef
         self.Omega_coeff = 1
         self.Omega = -1.
         self.Sigma = -1.
         self.Gamma = -1.
         self.jitter = 1e-3
+
         self.location_current, self.robot_heading = robot.get_robot_position()
         velocity, decision_horizon, decision_horizon_init, source_detection_range = source.get_source_info_robot()
         self.angular_range, self.arena_lb, self.arena_ub = source.get_source_info_arena()
+
         self.robot_velocity = velocity
         self.decision_horizon = decision_horizon
         self.decision_horizon_init = decision_horizon_init

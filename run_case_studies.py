@@ -14,14 +14,17 @@ def main():
     case_study = 76
     decision_making_mode = "bayes-swarm" # "bayes-swarm"
     simulation_mode = " "  # Options: "pybullet", " " 
-    if simulation_mode == "pybullet":
-        simulation_configs = SimulationConfigs(
-            simulation_mode="pybullet",
-            environment="mountain-1",
-            texture="source",
-            robot_type="uav")
-    else:
-        simulation_configs = SimulationConfigs()
+#    if simulation_mode == "pybullet":
+#        simulation_configs = SimulationConfigs(
+#            simulation_mode="pybullet",
+#            environment="mountain-1",
+#            texture="source",
+#            robot_type="uav")
+#    else:
+#        simulation_configs = SimulationConfigs()
+
+    simulation_configs = SimulationConfigs()
+
     is_scout_team = False
     start_locations = None
     observation_frequency = 1
