@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """ Payam Ghassemi | 02/25/2020 """
 
+# Plots the sigal source which is created using Gaussian distribution
+
 import numpy as np 
 import pickle
 from matplotlib import pyplot as plt

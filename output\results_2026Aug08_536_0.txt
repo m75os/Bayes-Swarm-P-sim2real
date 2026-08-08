@@ -1,5 +1,0 @@
-Robot- robot-0  :  102
-Robot- robot-1  :  102
-Robot- robot-2  :  102
-Robot- robot-3  :  102
-Robot- robot-4  :  102

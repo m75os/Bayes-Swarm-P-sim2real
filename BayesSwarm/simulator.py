@@ -17,8 +17,6 @@ from BayesSwarm.robot import Robot
 from BayesSwarm.source import Source
 from BayesSwarm.network import Network
 
-import pybullet as p
-import pybullet_data
 import time
 import yaml
 
@@ -92,80 +90,80 @@ class Simulator:
                                is_full_observation=enable_full_observation,
                                communication_range=communication_range)
 
-        # Initiate PyBullet
-        self.simultion_motion_mode = "teleport"  # Options: "teleport" "move"
-        if self.simulation_mode == "pybullet":
-            physicsClient = p.connect(p.GUI)
-            p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-            p.setGravity(0,0,-10)
-            shift = [0, -0.02, 0]
-
-
-            self.robot_body = {}
-
-            config_file = ""
-        
-            if self.environment == "plain":
-                config_file = "BayesSwarm/configs/plain.yaml"
-                planeId = p.loadURDF("plane.urdf")
-            elif self.environment == "plain-texture":
-                config_file = "BayesSwarm/configs/plain.yaml"
-                planeId = p.loadURDF("plane.urdf")
-
-            # environment config file
-            config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
-            print(config)
-
-            # Set camera position and orientation
-            p.resetDebugVisualizerCamera(cameraDistance=config["camera_distance"], 
-                                cameraYaw=config["camera_yaw"], 
-                                cameraPitch=config["camera_pitch"], 
-                                cameraTargetPosition=config["camera_target_position"])
-
-            meshScale = [1, 1, 1]
-            for i in range(len(meshScale)):
-                meshScale[i] *= config["scale_factor"]
-
-            env_file = config["env_file"]
-            robot_file = ""
-            if self.robot_type == "uav":
-                robot_file = "BayesSwarm/object_files/drone.obj"
-                self.elevation = config["elevation_uav"]
-            elif self.robot_type == "ugv":
-                robot_file = "BayesSwarm/object_files/Cylinder.obj"
-                self.elevation = config["elevation_ugv"]
-
-            self.visualShapeId = p.createVisualShape(shapeType=p.GEOM_MESH,
-                                    fileName=env_file,
-                                    rgbaColor=[1, 1, 1, 1],
-                                    specularColor=[0.4, .4, 0],
-                                    visualFramePosition=shift,
-                                    meshScale=meshScale)
-
-            robotMeshScale = [0.02, 0.02, 0.02]
-            self.visualShapeId1 = p.createVisualShape(shapeType=p.GEOM_MESH,
-                    fileName=robot_file,
-                    rgbaColor=[1, 0, 0, 1],
-                    specularColor=[0.4, .4, 0],
-                    visualFramePosition=shift,
-                    meshScale=robotMeshScale)
-            
-            # Initiate env
-            rotation_vector = [0, 0, 0] 
-            for i in range(len(rotation_vector)):
-                rotation_vector[i] = config["rotation_vector_env"][i]*np.pi/180
-            self.cubeStartOrientation = p.getQuaternionFromEuler(rotation_vector)
-
-            self.env = p.createMultiBody(baseMass=0,
-                baseInertialFramePosition=[0, 0, 0],
-                baseVisualShapeIndex=self.visualShapeId,
-                basePosition=config["origin_env"],
-                baseOrientation=self.cubeStartOrientation,
-                useMaximalCoordinates=True)
-        
-            if self.texture == "source":
-                textureId = p.loadTexture("BayesSwarm/object_files/beacon.png")
-                p.changeVisualShape(objectUniqueId=self.env, linkIndex=-1, textureUniqueId=textureId)
+#        # Initiate PyBullet
+#        self.simultion_motion_mode = "teleport"  # Options: "teleport" "move"
+#        if self.simulation_mode == "pybullet":
+#            physicsClient = p.connect(p.GUI)
+#            p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+#            p.setGravity(0,0,-10)
+#            shift = [0, -0.02, 0]
+#
+#
+#            self.robot_body = {}
+#
+#            config_file = ""
+#        
+#            if self.environment == "plain":
+#                config_file = "BayesSwarm/configs/plain.yaml"
+#                planeId = p.loadURDF("plane.urdf")
+#            elif self.environment == "plain-texture":
+#                config_file = "BayesSwarm/configs/plain.yaml"
+#                planeId = p.loadURDF("plane.urdf")
+#
+#            # environment config file
+#            config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
+#            print(config)
+#
+#            # Set camera position and orientation
+#            p.resetDebugVisualizerCamera(cameraDistance=config["camera_distance"], 
+#                                cameraYaw=config["camera_yaw"], 
+#                                cameraPitch=config["camera_pitch"], 
+#                                cameraTargetPosition=config["camera_target_position"])
+#
+#            meshScale = [1, 1, 1]
+#            for i in range(len(meshScale)):
+#                meshScale[i] *= config["scale_factor"]
+#
+#            env_file = config["env_file"]
+#            robot_file = ""
+#            if self.robot_type == "uav":
+#                robot_file = "BayesSwarm/object_files/drone.obj"
+#                self.elevation = config["elevation_uav"]
+#            elif self.robot_type == "ugv":
+#                robot_file = "BayesSwarm/object_files/Cylinder.obj"
+#                self.elevation = config["elevation_ugv"]
+#
+#            self.visualShapeId = p.createVisualShape(shapeType=p.GEOM_MESH,
+#                                    fileName=env_file,
+#                                    rgbaColor=[1, 1, 1, 1],
+#                                    specularColor=[0.4, .4, 0],
+#                                    visualFramePosition=shift,
+#                                    meshScale=meshScale)
+#
+#            robotMeshScale = [0.02, 0.02, 0.02]
+#            self.visualShapeId1 = p.createVisualShape(shapeType=p.GEOM_MESH,
+#                    fileName=robot_file,
+#                    rgbaColor=[1, 0, 0, 1],
+#                    specularColor=[0.4, .4, 0],
+#                    visualFramePosition=shift,
+#                    meshScale=robotMeshScale)
+#            
+#            # Initiate env
+#            rotation_vector = [0, 0, 0] 
+#            for i in range(len(rotation_vector)):
+#                rotation_vector[i] = config["rotation_vector_env"][i]*np.pi/180
+#            self.cubeStartOrientation = p.getQuaternionFromEuler(rotation_vector)
+#
+#            self.env = p.createMultiBody(baseMass=0,
+#                baseInertialFramePosition=[0, 0, 0],
+#                baseVisualShapeIndex=self.visualShapeId,
+#                basePosition=config["origin_env"],
+#                baseOrientation=self.cubeStartOrientation,
+#                useMaximalCoordinates=True)
+#        
+#            if self.texture == "source":
+#                textureId = p.loadTexture("BayesSwarm/object_files/beacon.png")
+#                p.changeVisualShape(objectUniqueId=self.env, linkIndex=-1, textureUniqueId=textureId)
 
         # Initialize each robot
         if enable_full_observation:
