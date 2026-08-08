@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """ Payam Ghassemi | 02/25/2020 """
 
+# Filters collected data for reduced computational expense
+
 import numpy as np 
 from time import time
 from scipy.stats import norm

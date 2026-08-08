@@ -111,12 +111,6 @@ class Simulator:
             elif self.environment == "plain-texture":
                 config_file = "BayesSwarm/configs/plain.yaml"
                 planeId = p.loadURDF("plane.urdf")
-            elif self.environment == "building":
-                config_file = "BayesSwarm/configs/building.yaml"
-            elif self.environment ==  "buiding-texture":
-                config_file = "BayesSwarm/configs/building.yaml"
-            elif self.environment == "mountain-1":
-                config_file = "BayesSwarm/configs/mountain1.yaml"
 
             # environment config file
             config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)

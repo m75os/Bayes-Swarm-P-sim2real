@@ -15,9 +15,15 @@ from BayesSwarm.filtering import Filtering
 
 
 class Robot:
-    def __init__(self, id, n_robots, bayes_swarm_args, source,
-                 velocity=1, start_location=[0,0], source_detection_range=1e-1,
-                 observation_frequency=1, measurement_noise_rate=0):
+    def __init__(self, 
+                    id, 
+                    n_robots, bayes_swarm_args, source,
+                    velocity=1, 
+                    start_location=[0,0], 
+                    source_detection_range=1e-1,
+                    observation_frequency=1, 
+                    measurement_noise_rate=0):
+
         self.is_enabled_full_log = False
         self.id = id
         self.n_robots = n_robots

@@ -1,0 +1,12 @@
+
++=======================================================
++ Timeout (101.256/100.000): Search mission failed!
++ The closest robot to the target is robot-2 with 0.451 meters distance.
++-------------------------------------------------------
++ Robot-robot-0 takes 20 decisions with a median computing time 0.000 (min: 0.000, max: 0.001); Mapping Error (MAE): nan.
++ Robot-robot-1 takes 14 decisions with a median computing time 0.000 (min: 0.000, max: 0.001); Mapping Error (MAE): nan.
++ Robot-robot-2 takes 23 decisions with a median computing time 0.000 (min: 0.000, max: 0.001); Mapping Error (MAE): nan.
++ Robot-robot-3 takes 15 decisions with a median computing time 0.000 (min: 0.000, max: 0.001); Mapping Error (MAE): nan.
++ Robot-robot-4 takes 21 decisions with a median computing time 0.000 (min: 0.000, max: 0.001); Mapping Error (MAE): nan.
++=======================================================
+

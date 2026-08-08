@@ -6,6 +6,7 @@ import numpy as np
 
 class Source:
     def __init__(self, id):
+
         self.id = id
         self.source_dim = 2
         if self.id == 0:
@@ -658,3 +659,4 @@ class Source:
         Y = Y.reshape(N,-1)
 
         return X1, X2, Y
+
