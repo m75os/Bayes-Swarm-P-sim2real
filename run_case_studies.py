@@ -13,15 +13,6 @@ def main():
     debug = False
     case_study = 76
     decision_making_mode = "bayes-swarm" # "bayes-swarm"
-    simulation_mode = " "  # Options: "pybullet", " " 
-#    if simulation_mode == "pybullet":
-#        simulation_configs = SimulationConfigs(
-#            simulation_mode="pybullet",
-#            environment="mountain-1",
-#            texture="source",
-#            robot_type="uav")
-#    else:
-#        simulation_configs = SimulationConfigs()
 
     simulation_configs = SimulationConfigs()
 
@@ -33,202 +24,56 @@ def main():
 
     if case_study == 1:
         debug = True
-        n_robots = 4
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 71:
-        n_robots = 5
-        source_id = 7
+        n_robots = 1
+        source_id = 0
         filtering_mode = "none" #"none"
         enable_full_observation = True #True
         bayes_swarm_mode = "local-penalty"
         time_profiling_enable = False
-    elif case_study == 72:
-        n_robots = 5
-        source_id = 7
-        filtering_mode = "none" #"none"
-        enable_full_observation = False #True
-        bayes_swarm_mode = "local-penalty"
-        time_profiling_enable = False
-    elif case_study == 73:
-        n_robots = 5
-        source_id = 7
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty-sync"
-        time_profiling_enable = False
-    elif case_study == 74:
-        n_robots = 5
-        source_id = 7
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "base"
-        time_profiling_enable = False
-    elif case_study == 75:
-        n_robots = 5
-        source_id = 7
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "explorative-penalized"
-        time_profiling_enable = False
+
     elif case_study == 76: # Levy-walk method
-        n_robots = 5
+        n_robots = 1 # Previously 5
         source_id = 7
         decision_making_mode = "levy-walk" # "bayes-swarm"
         filtering_mode = "none" #"none"
         enable_full_observation = True #True
         bayes_swarm_mode = None
         time_profiling_enable = False
-    elif case_study == 11:
-        n_robots = 5
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 12:
-        n_robots = 5
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = False #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 13:
-        n_robots = 5
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty-sync"
-    elif case_study == 14:
-        n_robots = 5
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "base"
-    elif case_study == 15:
-        n_robots = 5
-        source_id = 1
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "explorative-penalized"
-    elif case_study == 21:
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 22:
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = False #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 23:
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty-sync"
-    elif case_study == 24:
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "base"
-    elif case_study == 25:
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "explorative-penalized"
-    elif case_study == 26:
-        n_robots = 10
-        source_id = 2
-        decision_making_mode = "levy-walk" # "bayes-swarm"
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = None
-        time_profiling_enable = False
-    elif case_study == 3:
-        #optimizers=["PSO", None]
-        n_robots = 5
-        source_id = 3
-        filtering_mode = "none"
-        enable_full_observation = True
-        bayes_swarm_mode = "local-penalty" #extended-local-penalty"
-        #lb = np.array([-3, -3])
-        #ub = np.array([-1.2, 3])
-        #start_locations = np.random.rand(n_robots,2) * (ub - lb) + lb
-        scale = 1
-        mat = scipy.io.loadmat('data/GSOCase_InitLoc.mat')
-        start_locations = mat["startLoc"][:n_robots,:]*scale
-        observation_frequency = 10
-    elif case_study == 5:
-        n_robots = 10
-        source_id = 5
-        filtering_mode = "none"
-        enable_full_observation = True
-        bayes_swarm_mode = "local-penalty"
-        #lb = np.array([-3, -3])
-        #ub = np.array([-1.2, 3])
-        #start_locations = np.random.rand(n_robots,2) * (ub - lb) + lb
-        start_locations = np.ones((n_robots,2))*[-70,-70]
-        observation_frequency = 1
-    elif case_study == 6:
-        n_robots = 5
-        source_id = 5
-        filtering_mode = "none"
-        enable_full_observation = True
-        bayes_swarm_mode = "local-penalty"
-        start_locations = np.ones((n_robots,2))*[-70,-70]
-        observation_frequency = 1
-    elif case_study == 210: # Time profiling
-        time_profiling_enable = True
-        n_robots = 10
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 710: # Time profiling of Case 7
-        time_profiling_enable = True
-        n_robots = 5
-        source_id = 7
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 810: # Time profiling of Case 8
-        time_profiling_enable = True
-        n_robots = 5
-        source_id = 8
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 811: # Time profiling of Case 8 with large team
-        time_profiling_enable = True
-        n_robots = 30
-        source_id = 8
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 91: # Analysis of main optimizer
-        time_profiling_enable = True
-        n_robots = 5
-        source_id = 9
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 81:
-        n_robots = 5
-        source_id = 8
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
-    elif case_study == 110: # Study the impact of penalty term
-        n_robots = 2
-        source_id = 2
-        filtering_mode = "none" #"none"
-        enable_full_observation = True #True
-        bayes_swarm_mode = "local-penalty"
+#    elif case_study == 13:
+#        n_robots = 5
+#        source_id = 1
+#        filtering_mode = "none" #"none"
+#        enable_full_observation = True #True
+#        bayes_swarm_mode = "local-penalty-sync"
+#    elif case_study == 15:
+#        n_robots = 5
+#        source_id = 1
+#        filtering_mode = "none" #"none"
+#        enable_full_observation = True #True
+#        bayes_swarm_mode = "explorative-penalized"
+#    elif case_study == 3:
+#        #optimizers=["PSO", None]
+#        n_robots = 5
+#        source_id = 3
+#        filtering_mode = "none"
+#        enable_full_observation = True
+#        bayes_swarm_mode = "local-penalty" #extended-local-penalty"
+#        #lb = np.array([-3, -3])
+#        #ub = np.array([-1.2, 3])
+#        #start_locations = np.random.rand(n_robots,2) * (ub - lb) + lb
+#        scale = 1
+#        mat = scipy.io.loadmat('data/GSOCase_InitLoc.mat')
+#        start_locations = mat["startLoc"][:n_robots,:]*scale
+#        observation_frequency = 10
+#    elif case_study == 6:
+#        n_robots = 5
+#        source_id = 5
+#        filtering_mode = "none"
+#        enable_full_observation = True
+#        bayes_swarm_mode = "local-penalty"
+#        start_locations = np.ones((n_robots,2))*[-70,-70]
+#        observation_frequency = 1
+    
     else:
         raise("Invalid Case Study!")
 
