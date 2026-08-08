@@ -9,115 +9,37 @@ class Source:
 
         self.id = id
         self.source_dim = 2
-        if self.id == 0:
-            self.source_0_init()
-        elif self.id == 1:
-            self.source_1_init()
-        elif self.id == 2:
-            self.source_2_init()
-        elif self.id == 3:
-            self.source_3_init()
-        elif self.id == 4:
-            self.source_4_init()
-        elif self.id == 5:
-            self.source_5_init()
-        elif self.id == 51:
-            self.source_51_init()
-        elif self.id == 6:
-            self.source_6_init()
-        elif self.id == 7:
-            self.source_7_init()
-        elif self.id == 8:
-            self.source_8_init()
-        elif self.id == 9:
-            self.source_9_init()
-        elif self.id == 10:
-            self.source_10_init()
-        else:
-            self.source_1_init()
-        
+        self.source_init()
+       
     def get_source_location(self):
         
         return self.source_location
 
     def measure(self, location):
-        if self.id == 0:
-            signal_value = self.source_0_measure(location)
-        elif self.id == 1:
-            signal_value = self.source_1_measure(location)
-        elif self.id == 2:
-            signal_value = self.source_2_measure(location)
-        elif self.id == 3:
-            signal_value = self.source_3_measure(location)
-        elif self.id == 4:
-            signal_value = self.source_4_measure(location)
-        elif self.id == 5:
-            signal_value = self.source_5_measure(location)
-        elif self.id == 51:
-            signal_value = self.source_5_measure(location)
-        elif self.id == 6:
-            signal_value = self.source_6_measure(location)
-        elif self.id == 7:
-            signal_value = self.source_7_measure(location)
-        elif self.id == 8:
-            signal_value = self.source_8_measure(location)
-        elif self.id == 9:
-            signal_value = self.source_9_measure(location)
-        elif self.id == 10:
-            signal_value = self.source_10_measure(location)
-        else:
-            signal_value = self.source_1_measure(location)
-        
+
+        signal_value = self.source_measure(location)
         return signal_value
 
     def gradient(self, location):
-        if self.id == 7:
-            gradient_value = self.source_7_gradient(location)
         
+        gradient_value = self.source_gradient(location)
         return gradient_value
 
-    def source_0_init(self): # Based on 99 in my Matlab code
-        self.source_location = np.array([.5, 0.7])
-        self.time_max = 100
-        self.angular_range = np.array([0,np.pi/2])
-        self.arena_lb = np.array([0,0])
-        self.arena_ub = np.array([2.4, 2.4])
-        self.source_detection_range = 0.05
-        self.velocity = 0.1 # [m/s]
-        self.decision_horizon_init = 2
-        self.decision_horizon = 10
-        self.local_penalizing_coef = {"M": 1.2, "L": 50}
-        self.communication_range = 2
-    
-    def source_0_measure(self, location):
-        c = self.source_location
-        x = location
-        sig1 = -3.0
-        
-        dx1 = x - c
-        if np.size(location) > self.source_dim:
-            dx11 = np.linalg.norm(dx1, axis=1)**2
-        else:
-            dx11 = np.dot(dx1,dx1)
-        
-        f = np.exp(dx11/sig1)
+    def source_init(self): # Based on Case 1 in MRS paper, but adopted for IROS2020
 
-        return f
-
-    def source_7_init(self): # Based on Case 1 in MRS paper, but adopted for IROS2020
-        self.source_location = np.array([1., 2.])
-        self.time_max = 100
-        self.angular_range = np.array([0,np.pi/2])
-        self.arena_lb = np.array([0,0])
-        self.arena_ub = np.array([2.4, 2.4])
+        self.source_location    = np.array([1., 2.])
+        self.time_max           = 100
+        self.angular_range      = np.array([0,np.pi/2])
+        self.arena_lb           = np.array([0,0])
+        self.arena_ub           = np.array([2.4, 2.4])
         self.source_detection_range = 0.05
-        self.velocity = 0.1 # [m/s]
-        self.decision_horizon_init = 10
-        self.decision_horizon = 10
-        self.local_penalizing_coef = {"M": 1.2, "L": 2} #100
-        self.communication_range = 0.5
+        self.velocity               = 0.1 # [m/s]
+        self.decision_horizon_init  = 10
+        self.decision_horizon       = 10
+        self.local_penalizing_coef  = {"M": 1.2, "L": 2} #100
+        self.communication_range    = 0.5
     
-    def source_7_measure(self, location):
+    def source_measure(self, location):
         c = self.source_location
         x = location
         sig1 = -3.0
@@ -136,7 +58,7 @@ class Source:
 
         return f
     
-    def source_7_gradient(self, location):
+    def source_gradient(self, location):
         c = self.source_location
         x = location
         sig1 = -3.0
@@ -159,16 +81,27 @@ class Source:
 
     def get_source_info(self):
         
-        return self.velocity, self.decision_horizon, self.source_detection_range, self.source_location,\
-                self.angular_range, self.time_max, self.arena_lb, self.arena_ub
+        return  self.velocity, \
+                self.decision_horizon, \
+                self.source_detection_range, \
+                self.source_location,   \
+                self.angular_range, \
+                self.time_max, \
+                self.arena_lb, \
+                self.arena_ub
     
     def get_source_info_arena(self):
         
-        return self.angular_range, self.arena_lb, self.arena_ub
+        return  self.angular_range, \
+                self.arena_lb, \
+                self.arena_ub
     
     def get_source_info_robot(self):
         
-        return self.velocity, self.decision_horizon, self.decision_horizon_init, self.source_detection_range
+        return  self.velocity, 
+                self.decision_horizon, \
+                self.decision_horizon_init, \
+                self.source_detection_range
 
     def get_source_info_mission(self):
         
@@ -179,10 +112,12 @@ class Source:
         return self.local_penalizing_coef
 
     def set_velocity(self, velocity):
+
         Warning('Default velocity changed from {} to {}'.format(self.velocity, velocity))
         self.velocity = velocity
     
     def set_decision_horizon(self, decision_horizon):
+
         Warning('Default decision-horizon changed from {} to {}'.format(self.decision_horizon, decision_horizon))
         self.decision_horizon = decision_horizon
     
@@ -190,6 +125,7 @@ class Source:
         return self.communication_range
 
     def get_data_for_plot(self):
+
         N = 100
         x1 = np.linspace(self.arena_lb[0], self.arena_ub[0], N)
         x2 = np.linspace(self.arena_lb[1], self.arena_ub[1], N)

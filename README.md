@@ -9,5 +9,4 @@ You can also run the script as follows:
 ```
 python run_case_studies.py
 ```
-
-To enable pybullet, you can set `simulation_mode` at `pybullet`.
+**MODIFIED FOR ROS AND GAZEBO SIMULATION**

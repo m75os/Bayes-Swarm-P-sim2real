@@ -1,6 +1,0 @@
-scipy
-pandas
-matplotlib
-pyswarm
-sklearn
-Gpy
