@@ -1,0 +1,1 @@
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/src/build/dynamixel_sdk_examples/ament_cmake_core/dynamixel_sdk_examplesConfig-version.cmake

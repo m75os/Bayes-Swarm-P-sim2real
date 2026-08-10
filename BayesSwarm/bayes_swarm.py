@@ -316,6 +316,7 @@ class BayesSwarm:
             result = minimize(objective_function, x0.reshape(-1,), method=optimizer, bounds=bounds, constraints=cons)
             next_point = result.x
             next_point_magnitude = result.fun
+
         elif optimizer == "COBYLA":
             n_dim = np.size(lb)
             bounds = [(lb[0], ub[0])] 
@@ -335,6 +336,7 @@ class BayesSwarm:
             result = minimize(objective_function, x0.reshape(-1,), method=self.optimizer, constraints=cons)
             next_point = result.x
             next_point_magnitude = result.fun
+
         elif optimizer == "trust-constr":
             n_dim = np.size(lb)
             bounds = [(lb[0], ub[0])] 
@@ -345,6 +347,7 @@ class BayesSwarm:
             result = minimize(objective_function, x0.reshape(-1,), method=self.optimizer, bounds=bounds, constraints=cons)
             next_point = result.x
             next_point_magnitude = result.fun
+
         else: # "PSO"                
             result = pso(objective_function, lb, ub, f_ieqcons=constraints,\
                         maxiter=100, swarmsize=100, debug=False)

@@ -18,18 +18,28 @@ from BayesSwarm.source import Source
 from BayesSwarm.network import Network
 
 import time
-import yaml
 
 class Simulator:
-    def __init__(self, n_robots, source_id, start_locations=None, decision_making_mode="bayes-swarm",
-            bayes_swarm_mode='scalable', alpha_mode='adaptive_time', filtering_mode="full", decision_horizon=None,
-            velocity=None, observation_frequency=1, optimizers=[None, None], enable_full_observation=True,
-            is_scout_team=False, debug=False, time_profiling_enable=False, measurement_noise_rate=0,
-            depot_mode="single-depot", enable_log_simulation=True, simulation_configs=None):
-        self.simulation_mode = simulation_configs.mode
-        self.environment = simulation_configs.environment
-        self.texture = simulation_configs.texture
-        self.robot_type = simulation_configs.robot_type
+    def __init__(self, 
+                n_robots, 
+                start_locations=None, 
+                decision_making_mode="bayes-swarm",
+                bayes_swarm_mode='scalable', 
+                alpha_mode='adaptive_time', 
+                filtering_mode="full", 
+                decision_horizon=None,
+                velocity=None, 
+                observation_frequency=1, 
+                optimizers=[None, None], 
+                enable_full_observation=True,
+                is_scout_team=False, 
+                debug=False, 
+                time_profiling_enable=False, 
+                measurement_noise_rate=0,
+                depot_mode="single-depot", 
+                enable_log_simulation=True, 
+                simulation_configs=None):
+
         self.time_profiling_enable = time_profiling_enable
         self.debug = debug
         self.enable_log_simulation = enable_log_simulation
@@ -38,9 +48,7 @@ class Simulator:
         self.reached_robot_id = None
         self.is_scout_team = is_scout_team
         self.n_robots = n_robots
-        self.source_id = source_id
         self.enable_plot = True
-        self.source = Source(source_id)
 
         self.angular_range, self.arena_lb, self.arena_ub = self.source.get_source_info_arena()
         self.source_location, self.time_max = self.source.get_source_info_mission()
@@ -56,14 +64,12 @@ class Simulator:
 
 
         self.local_penalizing_coef = self.source.get_source_bayes_settings()
-        communication_range = self.source.get_source_communication_range()
+        communication_range = self.source.communication_range()
         if velocity != None:
-            self.velocity = velocity
-            self.source.set_velocity(velocity)
+            self.source.velocity = velocity
 
         if decision_horizon != None:
             self.decision_horizon = decision_horizon
-            self.source.set_decision_horizon(decision_horizon)
         
         if observation_frequency > 0:
             self.observation_frequency = observation_frequency # [Hz]
@@ -89,81 +95,6 @@ class Simulator:
         self.network = Network(n_robots,
                                is_full_observation=enable_full_observation,
                                communication_range=communication_range)
-
-#        # Initiate PyBullet
-#        self.simultion_motion_mode = "teleport"  # Options: "teleport" "move"
-#        if self.simulation_mode == "pybullet":
-#            physicsClient = p.connect(p.GUI)
-#            p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-#            p.setGravity(0,0,-10)
-#            shift = [0, -0.02, 0]
-#
-#
-#            self.robot_body = {}
-#
-#            config_file = ""
-#        
-#            if self.environment == "plain":
-#                config_file = "BayesSwarm/configs/plain.yaml"
-#                planeId = p.loadURDF("plane.urdf")
-#            elif self.environment == "plain-texture":
-#                config_file = "BayesSwarm/configs/plain.yaml"
-#                planeId = p.loadURDF("plane.urdf")
-#
-#            # environment config file
-#            config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
-#            print(config)
-#
-#            # Set camera position and orientation
-#            p.resetDebugVisualizerCamera(cameraDistance=config["camera_distance"], 
-#                                cameraYaw=config["camera_yaw"], 
-#                                cameraPitch=config["camera_pitch"], 
-#                                cameraTargetPosition=config["camera_target_position"])
-#
-#            meshScale = [1, 1, 1]
-#            for i in range(len(meshScale)):
-#                meshScale[i] *= config["scale_factor"]
-#
-#            env_file = config["env_file"]
-#            robot_file = ""
-#            if self.robot_type == "uav":
-#                robot_file = "BayesSwarm/object_files/drone.obj"
-#                self.elevation = config["elevation_uav"]
-#            elif self.robot_type == "ugv":
-#                robot_file = "BayesSwarm/object_files/Cylinder.obj"
-#                self.elevation = config["elevation_ugv"]
-#
-#            self.visualShapeId = p.createVisualShape(shapeType=p.GEOM_MESH,
-#                                    fileName=env_file,
-#                                    rgbaColor=[1, 1, 1, 1],
-#                                    specularColor=[0.4, .4, 0],
-#                                    visualFramePosition=shift,
-#                                    meshScale=meshScale)
-#
-#            robotMeshScale = [0.02, 0.02, 0.02]
-#            self.visualShapeId1 = p.createVisualShape(shapeType=p.GEOM_MESH,
-#                    fileName=robot_file,
-#                    rgbaColor=[1, 0, 0, 1],
-#                    specularColor=[0.4, .4, 0],
-#                    visualFramePosition=shift,
-#                    meshScale=robotMeshScale)
-#            
-#            # Initiate env
-#            rotation_vector = [0, 0, 0] 
-#            for i in range(len(rotation_vector)):
-#                rotation_vector[i] = config["rotation_vector_env"][i]*np.pi/180
-#            self.cubeStartOrientation = p.getQuaternionFromEuler(rotation_vector)
-#
-#            self.env = p.createMultiBody(baseMass=0,
-#                baseInertialFramePosition=[0, 0, 0],
-#                baseVisualShapeIndex=self.visualShapeId,
-#                basePosition=config["origin_env"],
-#                baseOrientation=self.cubeStartOrientation,
-#                useMaximalCoordinates=True)
-#        
-#            if self.texture == "source":
-#                textureId = p.loadTexture("BayesSwarm/object_files/beacon.png")
-#                p.changeVisualShape(objectUniqueId=self.env, linkIndex=-1, textureUniqueId=textureId)
 
         # Initialize each robot
         if enable_full_observation:
@@ -317,7 +248,7 @@ class Simulator:
                 for irobot in robots_list:
                     robot_location, _ = self.robots[irobot].get_robot_position()
                     robot_locations.append(robot_location)
-                savemat("BayesSwarm_StartLoc_Case"+str(self.source_id)+".mat", {"start_locations": robot_locations})
+                savemat("BayesSwarm_StartLoc_Case.mat", {"start_locations": robot_locations})
                 quit()
 
 
@@ -541,11 +472,10 @@ class Simulator:
 
     def compute_start_locations(self, depot_mode="single-depot"):
         n_robots = self.n_robots
-        arena_lb = self.arena_lb
-        arena_ub = self.arena_ub
+        start_locations = np.zeros((n_robots, 2))
+
         if depot_mode == "four-depot":
-            start_locations = np.zeros((n_robots,2))
-            n_robot_per_corner = n_robots // 4
+            n_robot_per_corner = n_robots / 4
             # Lower left corner
             location = np.array([self.arena_lb[0], self.arena_lb[1]])
             l_index = 0
@@ -566,6 +496,5 @@ class Simulator:
             l_index = 3 * n_robot_per_corner
             n_robot_per_corner = n_robots - 3 * n_robot_per_corner
             start_locations[l_index:, :] = np.tile(location, (n_robot_per_corner, 1))
-        else:
-            start_locations = np.zeros((n_robots,2))
+
         return start_locations
