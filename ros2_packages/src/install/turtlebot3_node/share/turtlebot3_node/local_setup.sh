@@ -1,0 +1,1 @@
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/src/build/turtlebot3_node/ament_cmake_environment_hooks/local_setup.sh

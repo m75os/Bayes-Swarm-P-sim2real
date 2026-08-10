@@ -1,4 +1,1 @@
-
-float32[] state
-float32 reward
-bool done
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/build/turtlebot3_msgs/rosidl_cmake/srv/Dqn_Response.msg

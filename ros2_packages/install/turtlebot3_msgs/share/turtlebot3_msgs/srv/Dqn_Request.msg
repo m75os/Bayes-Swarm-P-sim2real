@@ -1,2 +1,1 @@
-uint8 action
-bool init
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/build/turtlebot3_msgs/rosidl_cmake/srv/Dqn_Request.msg

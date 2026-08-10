@@ -1,3 +1,1 @@
-
-# Response
-int32 position
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/build/dynamixel_sdk_custom_interfaces/rosidl_cmake/srv/GetPosition_Response.msg

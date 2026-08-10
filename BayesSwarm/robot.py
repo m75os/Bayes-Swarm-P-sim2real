@@ -9,7 +9,6 @@ from BayesSwarm.util import get_distance_from_line, get_line_equation, check_poi
 from BayesSwarm.util import tic, toc
 from BayesSwarm.util import kl_divergence_norm
 
-from BayesSwarm.source import Source as signal
 from BayesSwarm.bayes_swarm import BayesSwarm
 from BayesSwarm.filtering import Filtering
 
@@ -150,8 +149,10 @@ class Robot:
 
     def plan_next_waypoint(self, t):
         tic()
+
         if self.decision_making_mode == "random":
             self.waypoint_end = np.random.rand(1,2)[0] * (self.arena_ub-self.arena_lb) + self.arena_lb
+
         elif self.decision_making_mode == "corr-random-walk":
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
@@ -160,6 +161,7 @@ class Robot:
             step_length_max = 0.2
             r = np.random.rand()
             dtheta = 2 * np.arctan2( (1-rho)*np.tan(np.pi * (r-0.5)), (1+rho) ) 
+
             if np.size(self.waypoint_end) > 1:
                 theta = dtheta + np.arctan2(self.waypoint_end[1]-self.waypoint_start[1], self.waypoint_end[0]-self.waypoint_start[0])
             else:
@@ -170,6 +172,7 @@ class Robot:
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
             self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+
         elif self.decision_making_mode == "levy-walk":
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
@@ -184,6 +187,7 @@ class Robot:
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
             self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+
         elif self.decision_making_mode == "levy-walk-crw":
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
@@ -203,6 +207,7 @@ class Robot:
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
             self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+
         else:
             X_robot = []
             y_robot = []

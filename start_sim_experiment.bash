@@ -28,6 +28,7 @@ export ROS_DOMAIN_ID=30
 export TURTLEBOT3_MODEL=burger
 source /opt/ros/humble/setup.bash
 source ~/Bayes-Swarm-P-sim2real/ros2_packages/install/setup.bash
-ros2 run turtlebot3_teleop teleop_keyboard
+python3 drive_turtlebot.py
+#ros2 run turtlebot3_teleop teleop_keyboard
 
 

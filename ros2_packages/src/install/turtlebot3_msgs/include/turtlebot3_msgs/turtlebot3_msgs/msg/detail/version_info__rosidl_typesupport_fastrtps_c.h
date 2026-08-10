@@ -1,0 +1,1 @@
+/home/mint-xfce/Bayes-Swarm-P-sim2real/ros2_packages/src/build/turtlebot3_msgs/rosidl_typesupport_fastrtps_c/turtlebot3_msgs/msg/detail/version_info__rosidl_typesupport_fastrtps_c.h
