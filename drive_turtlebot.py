@@ -25,13 +25,11 @@ class DriveTurtlebot(Node):
 
     def get_coordinates(self, msg):
 
-        self.coordinates = msg
+        self.x = round(msg.pose.pose.position.x, 3)
+        self.y = round(msg.pose.pose.position.y, 3)
 
-        self.coordinates.x = round(self.coordinates.x, 3)
-        self.coordinates.y = round(self.coordinates.y, 3)
-
-        print(f"x: {self.coordinates.pose.pose.position.x}")
-        print(f"y: {self.coordinates.pose.pose.position.y}")
+        print(f"x: {self.x}")
+        print(f"y: {self.y}")
         
 
     def drive_forward(self):

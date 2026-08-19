@@ -1,6 +1,8 @@
 import csv
 import os
 import pathlib
+import numpy as np
+from scipy.interpolate import RBFInterpolator
 
 import time # Temporary, delete later
 
@@ -40,6 +42,22 @@ class csvFileHandler:
         self.max_x = 0
         self.min_y = 0
         self.max_y = 0
+
+        self.x_coord_center = 0.0
+        self.y_coord_center = 0.0
+        self.rssi_strength_center = 0.0
+        self.x_coord_above = 0.0
+        self.y_coord_above = 0.0
+        self.rssi_strength_above = 0.0
+        self.x_coord_below = 0.0
+        self.y_coord_below = 0.0
+        self.rssi_strength_below = 0.0
+        self.x_coord_left = 0.0
+        self.y_coord_left = 0.0
+        self.rssi_strength_left = 0.0
+        self.x_coord_right = 0.0
+        self.y_coord_right = 0.0
+        self.rssi_strength_right = 0.0
 
     def write_csv_header(self):
         """ Writes header for (x, y, rssi_strength) to csv file """
@@ -170,10 +188,10 @@ class csvFileHandler:
                         if (source_y_coord < self.min_y): 
                             self.min_y = source_y_coord 
 
-        #print(f"min_x = {self.min_x}")
-        #print(f"min_y = {self.min_y}")
-        #print(f"max_x = {self.max_x}")
-        #print(f"max_y = {self.max_y}")
+        print(f"min_x = {self.min_x}")
+        print(f"min_y = {self.min_y}")
+        print(f"max_x = {self.max_x}")
+        print(f"max_y = {self.max_y}")
  
     def retrieve_rssi(self, x_coord, y_coord):
         """ 
@@ -184,11 +202,27 @@ class csvFileHandler:
 
             csv source data starts at row 3
         """
-    
-        no_left_x_coord = False
-        no_right_x_coord = False
-        no_top_y_coord = False
-        no_bottom_y_coord = False
+
+        self.x_coord_center = 0.0
+        self.y_coord_center = 0.0
+        self.rssi_strength_center = 0.0
+        self.x_coord_above = 0.0
+        self.y_coord_above = 0.0
+        self.rssi_strength_above = 0.0
+        self.x_coord_below = 0.0
+        self.y_coord_below = 0.0
+        self.rssi_strength_below = 0.0
+        self.x_coord_left = 0.0
+        self.y_coord_left = 0.0
+        self.rssi_strength_left = 0.0
+        self.x_coord_right = 0.0
+        self.y_coord_right = 0.0
+        self.rssi_strength_right = 0.0
+
+        self.no_left_x_coord = False
+        self.no_right_x_coord = False
+        self.no_top_y_coord = False
+        self.no_bottom_y_coord = False
 
         matching_coordinate_found = False
         coord_difference_tolerance = 0.05
@@ -206,25 +240,30 @@ class csvFileHandler:
         coord_neighbor_tolerance = 0.05
 
         # Determines whether the entered coordinate is near the source boundaries
-        edge_boundary_tolerance = 0.1 
+        coord_boundary_tolerance = 0.4 
 
-        distance_to_left_edge = abs(x_coord - self.min_x)
-        distance_to_right_edge = abs(x_coord - self.max_x)
-        distance_to_top_edge = abs(y_coord - self.max_y)
-        distance_to_bottom_edge = abs(y_coord - self.min_y)
+        distance_from_min_x = abs(x_coord - self.min_x)
+        distance_from_max_x = abs(x_coord - self.max_x)
+        distance_from_max_y = abs(y_coord - self.max_y)
+        distance_from_min_y = abs(y_coord - self.min_y)
 
-        if (distance_to_left_edge < edge_boundary_tolerance):
-            no_left_x_coord = True
+        print(f"distance_from_min_x = {distance_from_min_x}")
+        print(f"distance_from_max_x = {distance_from_max_x}")
+        print(f"distance_from_min_y = {distance_from_min_y}")
+        print(f"distance_from_max_y = {distance_from_max_y}")
+
+        if (distance_from_min_x < coord_boundary_tolerance):
+            self.no_left_x_coord = True
             print("At left edge, not sampling left coordinate")
-        elif (distance_to_right_edge < edge_boundary_tolerance):
-            no_right_x_coord = True
+        elif (distance_from_max_x < coord_boundary_tolerance):
+            self.no_right_x_coord = True
             print("At right edge, not sampling right coordinate")
-        if (distance_to_top_edge < edge_boundary_tolerance):
-            no_top_y_coord = True
+        if (distance_from_max_y < coord_boundary_tolerance): 
+            self.no_top_y_coord = True
             print("At top edge, not sampling top coordinate")
-        elif (distance_to_bottom_edge < edge_boundary_tolerance):
-            no_bottom_y_coord = True
-            print("At top bottom edge, not sampling bottom coordinate")
+        elif (distance_from_min_y < coord_boundary_tolerance): 
+            self.no_bottom_y_coord = True
+            print("At bottom edge, not sampling bottom coordinate")
        
         with open(self.CSV_DATA_SOURCE, 'r') as csv_file:
             file_data = csv.reader(csv_file)
@@ -252,22 +291,23 @@ class csvFileHandler:
                         if (x_coord_difference < coord_difference_tolerance and
                             y_coord_difference < coord_difference_tolerance):
                             
-                            x_coord_center = source_x_coord 
-                            y_coord_center = source_y_coord 
-                            rssi_strength_center = float(row_data[3])
+                            self.x_coord_center = source_x_coord 
+                            self.y_coord_center = source_y_coord 
+                            self.rssi_strength_center = float(row_data[3])
                         
-                            #print(f"coord_difference_tolerance = {coord_difference_tolerance}")
-                            print("Center coordinate: ")
-                            print(f"[{x_coord_center},{y_coord_center}, {rssi_strength_center}]")
                             matching_coordinate_found = True
 
                 coord_difference_tolerance += 0.02
+            print("Center coordinate: ")
+            print(f"[{self.x_coord_center},{self.y_coord_center}, {self.rssi_strength_center}]")
+ 
             
             # Find coordinate below
-            if (not no_bottom_y_coord):
+            if (not self.no_bottom_y_coord):
 
                 coord_neighbor_tolerance = 0.05
                 coord_difference_tolerance = 0.05
+
                 with open(self.CSV_DATA_SOURCE, 'r') as csv_file:
 
                     while not found_y_coord_below:
@@ -286,18 +326,16 @@ class csvFileHandler:
                                 #print(f"coord_neighbor_tolerance = {coord_neighbor_tolerance}")
                                 #print("\n")
     
-                                x_coord_difference = abs(source_x_coord - x_coord_center)
-                                y_coord_difference = abs(source_y_coord - y_coord_center)
+                                x_coord_difference = abs(source_x_coord - self.x_coord_center)
+                                y_coord_difference = abs(source_y_coord - self.y_coord_center)
     
                                 if (x_coord_difference < coord_difference_tolerance):
-                                    if (source_y_coord < y_coord_center and
+                                    if (source_y_coord < self.y_coord_center and
                                         y_coord_difference < coord_neighbor_tolerance):
                                        
-                                        x_coord_below = source_x_coord 
-                                        y_coord_below = source_y_coord
-                                        rssi_strength_below = float(row_data[3])
-                                        print("Coordinate below: ")
-                                        print(f"[{x_coord_below}, {y_coord_below}, {rssi_strength_below}]")
+                                        self.x_coord_below = source_x_coord 
+                                        self.y_coord_below = source_y_coord
+                                        self.rssi_strength_below = float(row_data[3])
                                         found_y_coord_below = True
     
                         coord_neighbor_tolerance += 0.02
@@ -307,9 +345,12 @@ class csvFileHandler:
                             coord_neighbor_tolerance = 0.05
                             coord_difference_tolerance = 0.05
 
+            print("Coordinate below: ")
+            print(f"[{self.x_coord_below}, {self.y_coord_below}, {self.rssi_strength_below}]")
+ 
 
             # Find coordinate above
-            if (not no_top_y_coord):
+            if (not self.no_top_y_coord):
 
                 coord_neighbor_tolerance = 0.05
                 coord_difference_tolerance = 0.05
@@ -331,18 +372,16 @@ class csvFileHandler:
                                 #print(f"coord_neighbor_tolerance = {coord_neighbor_tolerance}")
                                 #print("\n")
     
-                                x_coord_difference = abs(source_x_coord - x_coord_center)
-                                y_coord_difference = abs(source_y_coord - y_coord_center)
+                                x_coord_difference = abs(source_x_coord - self.x_coord_center)
+                                y_coord_difference = abs(source_y_coord - self.y_coord_center)
     
                                 if (x_coord_difference < coord_difference_tolerance):
-                                    if (source_y_coord > y_coord_center and
+                                    if (source_y_coord > self.y_coord_center and
                                         y_coord_difference < coord_neighbor_tolerance):
                                        
-                                        x_coord_above = source_x_coord 
-                                        y_coord_above = source_y_coord
-                                        rssi_strength_above = float(row_data[3])
-                                        print("Coordinate above: ")
-                                        print(f"[{x_coord_above}, {y_coord_above}, {rssi_strength_above}]")
+                                        self.x_coord_above = source_x_coord 
+                                        self.y_coord_above = source_y_coord
+                                        self.rssi_strength_above = float(row_data[3])
                                         found_y_coord_above = True
     
                         coord_neighbor_tolerance += 0.02
@@ -352,10 +391,11 @@ class csvFileHandler:
                             coord_neighbor_tolerance = 0.05
                             coord_difference_tolerance = 0.05
 
-
-
+            print("Coordinate above: ")
+            print(f"[{self.x_coord_above}, {self.y_coord_above}, {self.rssi_strength_above}]")
+ 
             # Find coordinate to the left
-            if (not no_left_x_coord):
+            if (not self.no_left_x_coord):
 
                 coord_neighbor_tolerance = 0.05
                 coord_difference_tolerance = 0.05
@@ -377,18 +417,16 @@ class csvFileHandler:
                                 #print(f"coord_neighbor_tolerance = {coord_neighbor_tolerance}")
                                 #print("\n")
     
-                                x_coord_difference = abs(source_x_coord - x_coord_center)
-                                y_coord_difference = abs(source_y_coord - y_coord_center)
+                                x_coord_difference = abs(source_x_coord - self.x_coord_center)
+                                y_coord_difference = abs(source_y_coord - self.y_coord_center)
     
                                 if (y_coord_difference < coord_difference_tolerance):
-                                    if (source_x_coord < x_coord_center and
+                                    if (source_x_coord < self.x_coord_center and
                                         x_coord_difference < coord_neighbor_tolerance):
                                         
-                                        x_coord_left = source_x_coord
-                                        y_coord_left = source_y_coord
-                                        rssi_strength_left  = float(row_data[3])
-                                        print("Coordinate left: ")
-                                        print(f"[{x_coord_left}, {source_y_coord}, {rssi_strength_left}]")
+                                        self.x_coord_left = source_x_coord
+                                        self.y_coord_left = source_y_coord
+                                        self.rssi_strength_left  = float(row_data[3])
                                         found_x_coord_left = True
     
                         coord_neighbor_tolerance += 0.02
@@ -398,10 +436,13 @@ class csvFileHandler:
                             coord_neighbor_tolerance = 0.05
                             coord_difference_tolerance = 0.05
 
+            print("Coordinate left: ")
+            print(f"[{self.x_coord_left}, {self.y_coord_left}, {self.rssi_strength_left}]")
+ 
 
 
             # Find coordinate to the right
-            if (not no_right_x_coord):
+            if (not self.no_right_x_coord):
 
                 coord_neighbor_tolerance = 0.05
                 coord_difference_tolerance = 0.05
@@ -423,18 +464,16 @@ class csvFileHandler:
                                 #print(f"coord_neighbor_tolerance = {coord_neighbor_tolerance}")
                                 #print("\n")
     
-                                x_coord_difference = abs(source_x_coord - x_coord_center)
-                                y_coord_difference = abs(source_y_coord - y_coord_center)
+                                x_coord_difference = abs(source_x_coord - self.x_coord_center)
+                                y_coord_difference = abs(source_y_coord - self.y_coord_center)
     
                                 if (y_coord_difference < coord_difference_tolerance):
-                                    if (source_x_coord > x_coord_center and
+                                    if (source_x_coord > self.x_coord_center and
                                         x_coord_difference < coord_neighbor_tolerance):
                                         
-                                        x_coord_right = source_x_coord
-                                        y_coord_right = source_y_coord
-                                        rssi_strength_right = float(row_data[3])
-                                        print("Coordinate right: ")
-                                        print(f"[{x_coord_right}, {source_y_coord}, {rssi_strength_right}]")
+                                        self.x_coord_right = source_x_coord
+                                        self.y_coord_right = source_y_coord
+                                        self.rssi_strength_right = float(row_data[3])
                                         found_x_coord_right = True
     
                         coord_neighbor_tolerance += 0.02
@@ -444,11 +483,30 @@ class csvFileHandler:
                             coord_neighbor_tolerance = 0.05
                             coord_difference_tolerance = 0.05
 
-        return [x_coord_center, y_coord_center, rssi_strength_center,
-                x_coord_above, y_coord_above, rssi_strength_above,
-                x_coord_below, y_coord_below, rssi_strength_below,
-                x_coord_left, y_coord_left, rssi_strength_left,
-                x_coord_right, y_coord_right, rssi_strength_right]
+            print("Coordinate right: ")
+            print(f"[{self.x_coord_right}, {self.y_coord_right}, {self.rssi_strength_right}]")
+                
+
+
+        return [self.x_coord_center, self.y_coord_center, self.rssi_strength_center,
+                self.x_coord_above, self.y_coord_above, self.rssi_strength_above,
+                self.x_coord_below, self.y_coord_below, self.rssi_strength_below,
+                self.x_coord_left, self.y_coord_left, self.rssi_strength_left,
+                self.x_coord_right, self.y_coord_right, self.rssi_strength_right]
+
+
+
+    def rssi_interpolator(self):
+        """ 
+            Takes the coordinates from retrieve_rssi and 
+            interpolates to find an estimated rssi value
+        """
+
+                
+
+        
+
+        
 
           
 csv_file_inst = csvFileHandler()
@@ -459,7 +517,9 @@ csv_file_inst.get_csv_arena_bounds()
                 x_coord_above, y_coord_above, rssi_strength_above, \
                 x_coord_below, y_coord_below, rssi_strength_below, \
                 x_coord_left, y_coord_left, rssi_strength_left, \
-                x_coord_right, y_coord_right, rssi_strength_right] = csv_file_inst.retrieve_rssi(1, 1)
+                x_coord_right, y_coord_right, rssi_strength_right] = csv_file_inst.retrieve_rssi(2, 2)
+
+    
 
 #print(f"x_coor = {x_coor}")
 #print(f"y_coor = {y_coor}")

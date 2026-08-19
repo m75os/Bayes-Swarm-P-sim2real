@@ -13,11 +13,14 @@
 # If script not working, setup ROS Gazebo package with instructions from:
 #   https://emanual.robotis.com/docs/en/platform/turtlebot3/simulation/
 
+pkill -9 -f gzclient
+pkill -9 -f gzserver
+
 # For starting gazebo simulation
+export /opt/ros/humble/setup.bash
 export ROS_DOMAIN_ID=30 # For Turtlebot3
 export TURTLEBOT3_MODEL=burger # Must get turtlebot model before starting simulation 
 source /usr/share/gazebo/setup.sh # Must source simulation setup for gazebo to start properly
-source /opt/ros/humble/setup.bash
 source ~/Bayes-Swarm-P-sim2real/ros2_packages/install/setup.bash
 ros2 launch turtlebot3_gazebo empty_world.launch.py  & # Start empty gazebo environment
 
