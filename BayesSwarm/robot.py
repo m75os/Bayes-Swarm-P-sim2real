@@ -52,11 +52,16 @@ class Robot:
             raise('Observation frequency must be a positive value!')
 
         self.movement_line = []
-        
+       
+        # ------------ Source-based initialization ---------------- 
         self.source = source
-        self.angular_range, self.arena_lb, self.arena_ub = self.source.get_source_info_arena()
+        self.angular_range = self.source.angular_range
+        self.arena_lb = self.source.arena_lb
+        self.arena_ub = self.source.arena_ub
+        self.source_location = self.source.source_location
+        self.time_max = self.source.time_max
         self.arena_bound = self.arena_ub - self.arena_lb
-        self.source_location, self.time_max = self.source.get_source_info_mission()
+        #----------------------------------------------------------
 
         self.source_detection_range = source_detection_range
         self.is_found_source = False
@@ -150,6 +155,9 @@ class Robot:
     def plan_next_waypoint(self, t):
         tic()
 
+        mu = 2
+        step_length_max = 0.2
+
         if self.decision_making_mode == "random":
             self.waypoint_end = np.random.rand(1,2)[0] * (self.arena_ub-self.arena_lb) + self.arena_lb
 
@@ -157,8 +165,6 @@ class Robot:
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
             rho = 0.2
-            mu = 2
-            step_length_max = 0.2
             r = np.random.rand()
             dtheta = 2 * np.arctan2( (1-rho)*np.tan(np.pi * (r-0.5)), (1+rho) ) 
 
@@ -177,8 +183,6 @@ class Robot:
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
             rho = 0.5
-            mu = 2
-            step_length_max = 0.2
             theta = np.random.rand() * 2 * np.pi
 
             r = np.random.rand()
@@ -192,8 +196,6 @@ class Robot:
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
             rho = 0.2
-            mu = 2
-            step_length_max = 0.2
             r = np.random.rand()
             dtheta = 2 * np.arctan2( (1-rho)*np.tan(np.pi * (r-0.5)), (1+rho) ) 
             if np.size(self.waypoint_end) > 1:
@@ -292,16 +294,16 @@ class Robot:
             # q = (mu2, sig2)
             # Delta = kl_divergence_norm(x_star, p, q)
             x_star_self = self.decision_making.get_expected_source()
-            is_infromative = False
+            is_informative = False
             if np.size(x_star_self) == 0:
-                is_infromative = True
+                is_informative = True
             else:
                 x_star_peer = belief_model["xbest"]
                 dx = (x_star_peer - x_star_self)/self.arena_bound
                 Delta = np.linalg.norm(dx)
                 if Delta > self.information_gain_threshold:
-                    is_infromative = True
-            if is_infromative:
+                    is_informative = True
+            if is_informative:
                 self.observation_history = np.vstack((self.observation_history, data_observation))
         elif np.size(data_observation) > 0:
             self.observation_history = np.vstack((self.observation_history, data_observation))
@@ -317,10 +319,6 @@ class Robot:
         covered_ub = np.max(self.trajectory_history, axis=0)
         covered_lb = np.min(self.trajectory_history, axis=0)
         return covered_lb, covered_ub
-
-    def get_peers_plan(self):
-
-        return self.peers_plan
 
     def log_decision_making(self,computing_time):
         if np.size(self.decision_computing_time) == 0:
@@ -353,7 +351,7 @@ class Robot:
 
     def observation_model(self):
         #self.is_enabled_filtering = False
-        is_infromative = True
+        is_informative = True
         sensor_value = self.source.measure(self.location)
         if self.measurement_noise_rate > 0:
             sensor_value += self.noise_model(self.measurement_noise_rate * sensor_value)
@@ -365,9 +363,9 @@ class Robot:
             gp_model = self.decision_making.gp_mu
             gp_model_extended = self.decision_making.gp_mu_extended
             if np.size(self.observation_history) > 4:
-                is_infromative = self.filtering.filter_infomration(gp_model, gp_model_extended, x_star, y_star)
+                is_informative = self.filtering.filter_infomration(gp_model, gp_model_extended, x_star, y_star)
             
-        if is_infromative:
+        if is_informative:
             if np.size(self.observation_last_waypoint) == 0:
                 self.observation_last_waypoint = self.observation_last
             else:
@@ -436,27 +434,7 @@ class Robot:
 
     def update_reached_waypoint(self):
         self.observation_last_waypoint = []
-        
-    def get_sensor_info(self):
-        
-        return self.measurement_noise_rate, self.observation_frequency 
-        
-    def get_robot_velocity(self):
-        
-        return self.velocity
-
-    def get_robot_position(self):
-        
-        return self.location, self.robot_heading
-    
-    def get_robot_id(self):
-        
-        return self.id
-
-    def get_n_robots(self):
-        
-        return self.n_robots
-    
+   
     def get_robot_trajectory(self):
 
         return self.trajectory_history[:,:2]
@@ -523,7 +501,7 @@ class Robot:
         X_peers = []
         ## Calculate Actual Batch Acquisition Function that has been estimated by Bayes-Swarm-II
         # Add the first robot's plan as observation and update the belief model
-        X_peers_plan = self.get_peers_plan()
+        X_peers_plan = self.peers_plan
         if self.id == 0:
             peer_id = 1
             j_peer = 'robot-'+str(peer_id)

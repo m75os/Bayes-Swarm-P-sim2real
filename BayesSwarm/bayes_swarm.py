@@ -26,12 +26,27 @@ class BayesSwarm:
                     decision_horizon_mode="constant", 
                     alpha=0.1, 
                     beta=1, 
-                    optimizers=["COBYLA","L-BFGS-B"], 
+                    optimizer = "COBYLA"
+                    mu_optimizer = "L-BFGS-B" # ["L-BFGS-B", "Nelder-Mead", "TNC"]
                     debug=False, 
                     time_profiling_enable=False,
                     depot_mode="single-depot"):
 
+        self.robot = robot
+        self.source = source
+        self.time_max = time_max
+        self.local_penalizing_coef = local_penalizing_coef
+        self.bayes_swarm_mode = bayes_swarm_mode
+        self.alpha_mode = alpha_mode
+        self.decision_horizon_mode = decision_horizon_mode 
+        self.alpha = alpha
+        self.beta = beta
+        self.optimizer = optimizer
+        self.mu_optimizer = mu_optimizer
+        self.debug = debug
         self.time_profiling_enable = time_profiling_enable
+        self.depot_mode = depot_mode
+
         if self.time_profiling_enable:
             self.time_profiling = { "data_size": [], 
                                     "belief_update": [], 
@@ -40,24 +55,17 @@ class BayesSwarm:
                                     "overal_time": [], 
                                     "mission_time": []} 
 
-        self.depot_mode = depot_mode
-        self.debug = debug
-        self.time_max = time_max
 
-        self.safe_distance = 0.1
-        self.min_distance_to_fake_source = 100
+        self.SAFE_DISTANCE = 0.1
+        self.MIN_DISTANCE_TO_FAKE_SOURCE = 100
         self.min_dist_max = 100
         self.min_distance_to_xbest = self.min_dist_max
 
-        self.beta = beta
         self.is_non_batch_mode = True
 
-        # Having noise help the stability of the GPR training (avoid zero covariance)
-        self.signal_noise_in_modeling = 1e-3 # std-dev
+        self.signal_noise_in_modeling = 1e-3 # std-dev Having noise help the stability of the GPR training (avoid zero covariance)
+
         
-        self.robot = robot
-        self.source = source
-        self.robot_id = self.robot.get_robot_id()
 
         ## Begin: Solver Analysis
         ## robot_id_for_analysis = 2
@@ -75,40 +83,34 @@ class BayesSwarm:
             self.is_robotic_local_penalizing = True
         else:
             self.is_robotic_local_penalizing = False
+
         self.is_hard_local_penalizer = False
         self.is_stagnation_penalizing = False
         self.is_estimated_L = False
         self.is_estimated_M = True
         self.is_knowledge_per_meter = False
 
-        self.bayes_swarm_mode = bayes_swarm_mode
-        self.alpha = alpha
-        self.alpha_mode = alpha_mode
-        self.decision_horizon_mode = decision_horizon_mode 
 
-        self.local_penalizing_coef = local_penalizing_coef
         self.Omega_coeff = 1
         self.Omega = -1.
         self.Sigma = -1.
         self.Gamma = -1.
         self.jitter = 1e-3
 
-        self.location_current, self.robot_heading = robot.get_robot_position()
-        velocity, decision_horizon, decision_horizon_init, source_detection_range = source.get_source_info_robot()
-        self.angular_range, self.arena_lb, self.arena_ub = source.get_source_info_arena()
 
-        self.robot_velocity = velocity
-        self.decision_horizon = decision_horizon
-        self.decision_horizon_init = decision_horizon_init
-        if optimizers[0] == None:
-            self.optimizer = "COBYLA"
-        else:
-            self.optimizer = optimizers[0]
+        self.robot_id = self.robot.id
+        self.location_current = robot.location
+        self.robot_heading = robot.robot_heading
 
-        if optimizers[1] == None:
-            self.mu_optimizer = "L-BFGS-B"
-        else:
-            self.mu_optimizer = optimizers[1]
+        self.angular_range = source.angular_range
+        self.arena_lb = source.arena_lb
+        self.arena_ub = source.arena_ub
+
+        source_detection_range = source.source_detection_range
+
+        self.robot_velocity = source.velocity 
+        self.decision_horizon = source.decision_horizon
+        self.decision_horizon_init = source.decision_horizon_init
         self.search_dim = 2 # 2D Space
         self.expected_source_location = []
         self.expected_source_location_prv = []
@@ -121,7 +123,11 @@ class BayesSwarm:
         self.covered_lb = self.location_current
         self.covered_ub = self.location_current
 
-        signal_noise_in_modeling, self.observation_frequency = self.robot.get_sensor_info()
+        # ---------- Sensor information ------------------
+        signal_noise_in_modeling = self.robot.measurement_noise_rate
+        self.observation_frequency = self.robot.observation_frequency
+        # -----------------------------------------------
+
         if signal_noise_in_modeling > 0:
             self.signal_noise_in_modeling = signal_noise_in_modeling
         self.gp_modeling_mode = "scipy-gpr" #"gpy" # "scipy-gpr"
@@ -139,29 +145,22 @@ class BayesSwarm:
         if self.decision_horizon * self.observation_frequency < 1:
             raise("Increase decision horizon or observation frequency; or decrease the robot velocity!")
         self.displacement_threshold_min = source_detection_range * 0.9
-
         
         self.is_robot_stuck_in_local = False
         self.is_sync_decision_making = False
 
-    def bayes_swarm_jcise2019(self): # "JCISE-2019"
-        self.bayes_swarm_mode = "base"
-        self.alpha_mode = "constant"
-        
-    def bayes_swarm_mrs2019(self): # "MRS-2019"
-        self.bayes_swarm_mode = "local-penalty"
-        self.alpha_mode = "adaptive"
-
     def bayes_swarm_iros2020(self): # "IROS-2020"
-        self.bayes_swarm_mode = "scalable"
-        self.alpha_mode = "adaptive"
+        self.bayes_swarm_mode = "scalable" # ["local-penalty", "base", "scalable"]
+        self.alpha_mode = "adaptive" # ["constant", "adaptive"]
 
     def get_next_point(self, t, X_robot, y_robot):        
         if self.time_profiling_enable:
             tic()
         # Update the exploitation weight (alpha) 
-        self.location_current, self.robot_heading = self.robot.get_robot_position()
+        self.location_current = self.robot.location
+        self.robot_heading = self.robot.robot_heading
         self.update_decision_horizon(t)
+
         if self.decision_counter == 0 or np.size(y_robot) <= 1:
             self.next_point, self.next_point_magnitude = self.get_first_decision(self.depot_mode)
             if self.time_profiling_enable:
@@ -170,7 +169,7 @@ class BayesSwarm:
                 self.time_profiling["cal_next_location"].append(0)
             result = None
         else:
-            self.X_peers_plan = self.robot.get_peers_plan()
+            self.X_peers_plan = self.robot.peers_plan 
             n_peers = len(self.X_peers_plan)
             X_peers = []
             X_peers_next_waypoint = []
@@ -371,7 +370,7 @@ class BayesSwarm:
             depot_mode (str): Starting point mode: "single-depot", "four-depot" 
         """
         robot_id = self.robot_id
-        n_robots = self.robot.get_n_robots()
+        n_robots = self.robot.n_robots 
         travel_dist_max = self.robot_velocity * self.decision_horizon_init
         
         theta_sign = [1, 1]
@@ -506,8 +505,8 @@ class BayesSwarm:
             self.Gamma = 1
             if np.size(self.X_peers_plan) > 0:
                 if self.is_robotic_local_penalizing:
-                    min_dist = self.min_distance_to_fake_source
-                    self.Gamma = self.robotic_local_penalizing(x)# * (1 - np.exp(-10*(min_dist/(np.sqrt(2)*4*self.safe_distance))**2))
+                    MIN_DIST = self.MIN_DISTANCE_TO_FAKE_SOURCE
+                    self.Gamma = self.robotic_local_penalizing(x)# * (1 - np.exp(-10*(MIN_DIST /(np.sqrt(2)*4*self.SAFE_DISTANCE))**2))
                     
                 else:
                     self.Gamma = self.local_penalizing(x)
@@ -618,20 +617,20 @@ class BayesSwarm:
                     if np.size(x_peer_plan) > 0:
                         xp = x_peer_plan[2:]
                         norm_xxp = np.linalg.norm(x-xp)
-                        local_penalty = self.stagnation_penalizing_func(self.safe_distance, norm_xxp)
+                        local_penalty = self.stagnation_penalizing_func(self.SAFE_DISTANCE, norm_xxp)
                         Gamma *= local_penalty
                         #print(M, ": ", local_penalty, ": ", norm_xxp)      
         return Gamma
 
-    def stagnation_penalizing_func(self, safe_distance, norm_xxp):
-        #return 0.5 * erfc(-(norm_xxp - 2 * safe_distance)*np.sqrt(np.exp(-sigma_x)/(safe_distance*(1+np.exp(-sigma_x)))))
-        return erfc(-(norm_xxp - 2*safe_distance)/safe_distance)
+    def stagnation_penalizing_func(self, SAFE_DISTANCE, norm_xxp):
+        #return 0.5 * erfc(-(norm_xxp - 2 * SAFE_DISTANCE)*np.sqrt(np.exp(-sigma_x)/(SAFE_DISTANCE*(1+np.exp(-sigma_x)))))
+        return erfc(-(norm_xxp - 2*SAFE_DISTANCE)/SAFE_DISTANCE)
 
 
     def robotic_local_penalizing(self, x):
         gp_mu = self.gp_mu
         gp_sigma = self.gp_sigma
-        safe_distance = self.safe_distance
+        SAFE_DISTANCE = self.SAFE_DISTANCE 
         if self.is_non_batch_mode:
             mu_x, sigma_x = gp_sigma.predict(x)
         else:
@@ -651,7 +650,7 @@ class BayesSwarm:
                             xp = x_peer_plan[i*2:(i+1)*2]
                             #xp = x_peer_plan[2:]
                             norm_xxp = np.linalg.norm(x-xp)
-                            local_penalty = self.robotic_local_penalizing_func(safe_distance, norm_xxp, sigma_x)
+                            local_penalty = self.robotic_local_penalizing_func(SAFE_DISTANCE, norm_xxp, sigma_x)
                             Gamma *= local_penalty
             else:
                 for i_peer in self.X_peers_plan:
@@ -659,14 +658,14 @@ class BayesSwarm:
                     if np.size(x_peer_plan) > 0:
                         xp = x_peer_plan[2:]
                         norm_xxp = np.linalg.norm(x-xp)
-                        local_penalty = self.robotic_local_penalizing_func(safe_distance, norm_xxp, sigma_x)
+                        local_penalty = self.robotic_local_penalizing_func(SAFE_DISTANCE, norm_xxp, sigma_x)
                         Gamma *= local_penalty
                         #print(M, ": ", local_penalty, ": ", norm_xxp)      
         return Gamma
 
-    def robotic_local_penalizing_func(self, safe_distance, norm_xxp, sigma_x):
-        #return 0.5 * erfc(-(norm_xxp - 2 * safe_distance)*np.sqrt(np.exp(-sigma_x)/(safe_distance*(1+np.exp(-sigma_x)))))
-        return 0.5 * erfc(-(norm_xxp - safe_distance))
+    def robotic_local_penalizing_func(self, SAFE_DISTANCE, norm_xxp, sigma_x):
+        #return 0.5 * erfc(-(norm_xxp - 2 * SAFE_DISTANCE)*np.sqrt(np.exp(-sigma_x)/(SAFE_DISTANCE *(1+np.exp(-sigma_x)))))
+        return 0.5 * erfc(-(norm_xxp - SAFE_DISTANCE))
 
     def local_penalizing_func(self, M, L, norm_xxp, mu_xp, sigma_xp):
         if self.is_hard_local_penalizer:
@@ -757,7 +756,7 @@ class BayesSwarm:
         if np.size(X_peers) > 0 and np.size(self.expected_source_location) > 0:
             if np.size(self.known_fake_source) > 0:
                 X_peers = np.vstack((X_peers, self.known_fake_source))
-                self.min_distance_to_fake_source = np.min(distance.cdist(self.expected_source_location.reshape(-1,2), self.known_fake_source.reshape(-1,2)))
+                self.MIN_DISTANCE_TO_FAKE_SOURCE = np.min(distance.cdist(self.expected_source_location.reshape(-1,2), self.known_fake_source.reshape(-1,2)))
             self.min_distance_to_xbest = np.min(distance.cdist(self.expected_source_location.reshape(-1,2), X_peers.reshape(-1,2)))
         else:
             self.min_distance_to_xbest = self.min_dist_max
@@ -778,20 +777,20 @@ class BayesSwarm:
             time_max = self.time_max * 0.1
             if self.is_non_batch_mode:
                 # weight_max = 1
-                if self.min_distance_to_fake_source < 2.5 * self.safe_distance:
+                if self.MIN_DISTANCE_TO_FAKE_SOURCE < 2.5 * self.SAFE_DISTANCE:
                     #print(self.known_fake_source)
                     self.alpha = 0.1
                 #elif self.min_distance_to_xbest > 0.05*5:
                 #    self.alpha = 0.8
                 else:
-                    # weight = weight_max * np.exp(-10*(self.min_distance_to_xbest/(np.sqrt(2)*self.safe_distance))**2)
-                    #print(self.min_distance_to_fake_source, ":", self.min_distance_to_xbest, ": weight ", weight)
+                    # weight = weight_max * np.exp(-10*(self.min_distance_to_xbest/(np.sqrt(2)*self.SAFE_DISTANCE))**2)
+                    #print(self.MIN_DISTANCE_TO_FAKE_SOURCE, ":", self.min_distance_to_xbest, ": weight ", weight)
                     #self.alpha = (weight_max - weight) #/ (1 + np.exp(-10*(t/time_max - 1/3)))
-                    if self.min_distance_to_xbest >= 2 * self.safe_distance:
+                    if self.min_distance_to_xbest >= 2 * self.SAFE_DISTANCE:
                         self.alpha = 0.8 #
                     else:
                         self.alpha = 1 / (1 + np.exp(-10*(t/time_max - 1/3)))
-                #weight = np.exp(-(self.min_distance_to_xbest/(4*self.safe_distance))**2)
+                #weight = np.exp(-(self.min_distance_to_xbest/(4*self.SAFE_DISTANCE))**2)
                 #self.beta = 1 - self.alpha
             else:
                 self.alpha = 1 / (1 + np.exp(-10*(t/time_max - 1/3)))
@@ -953,28 +952,3 @@ class BayesSwarm:
         M = self.expected_source_magnitude
         return L, M
 
-    def get_gp_gradient(self, gp, x):
-        pass
-        #gp_hyperparameters = gp_sigma.get_hyperparameters()
-
-        """     
-        def estimate_L(model,bounds,storehistory=True):
-
-        Estimate the Lipschitz constant of f by taking maximizing the norm of the expectation of the gradient of *f*.
-        
-        def df(x,model,x0):
-            x = np.atleast_2d(x)
-            dmdx,_ = model.predictive_gradients(x)
-            res = np.sqrt((dmdx*dmdx).sum(1)) # simply take the norm of the expectation of the gradient
-            return -res
-
-        samples = samples_multidimensional_uniform(bounds,500)
-        samples = np.vstack([samples,model.X])
-        pred_samples = df(samples,model,0)
-        x0 = samples[np.argmin(pred_samples)]
-        res = scipy.optimize.minimize(df,x0, method='L-BFGS-B',bounds=bounds, args = (model,x0), options = {'maxiter': 200})
-        minusL = res.fun[0][0]
-        L = -minusL
-        if L<1e-7: L=10  ## to avoid problems in cases in which the model is flat.
-        return L
-        """

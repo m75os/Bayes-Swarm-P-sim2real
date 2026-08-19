@@ -20,7 +20,7 @@ class Filtering:
         self.delta = -1
         self.jitter = 1e-10
 
-    def filter_infomration(self, gp_model, gp_model_extended, x_star, y_star):
+    def filter_information(self, gp_model, gp_model_extended, x_star, y_star):
         is_informative = False
         self.gp_model = gp_model
         self.gp_model_extended = gp_model_extended

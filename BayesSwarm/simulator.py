@@ -50,10 +50,20 @@ class Simulator:
         self.n_robots = n_robots
         self.enable_plot = True
 
-        self.angular_range, self.arena_lb, self.arena_ub = self.source.get_source_info_arena()
-        self.source_location, self.time_max = self.source.get_source_info_mission()
-        self.velocity, self.decision_horizon,\
-            self.decision_horizon_init, self.source_detection_range = self.source.get_source_info_robot()
+# ----------- From Source class ------------
+
+        self.angular_range = self.source.angular_range
+        self.arena_lb = self.source_arena_lb
+        self.arena_ub = self.source.arena_ub
+
+        self.source_location = self.source.source_location
+        self.time_max = self.source.time_max
+        
+        self.velocity = self.source.velocity
+        self.decision_horizon = self.source.decision_horizon
+        self.decision_horizon_init = self.source.decision_horizon_init
+        self.source_detection_range = self.source.source_detection_range
+        
         if np.size(start_locations) > 1:
             if start_locations.all == None:
                 self.start_locations = self.compute_start_locations(depot_mode)
@@ -63,7 +73,7 @@ class Simulator:
             self.start_locations = self.compute_start_locations(depot_mode)
 
 
-        self.local_penalizing_coef = self.source.get_source_bayes_settings()
+        self.local_penalizing_coef = self.source.local_penalizing_coef 
         communication_range = self.source.communication_range()
         if velocity != None:
             self.source.velocity = velocity
@@ -84,7 +94,7 @@ class Simulator:
         self.found_source = {}
         self.is_on_the_path = {}
         self.decision_making_mode = decision_making_mode
-        local_penalizing_coef = self.source.get_source_bayes_settings()
+        local_penalizing_coef = self.source.local_penalizing_coef 
         self.bayes_swarm_args = {"bayes_swarm_mode": bayes_swarm_mode, "local_penalizing_coef": local_penalizing_coef,\
                                 "decision_making_mode": decision_making_mode, "filtering_mode": filtering_mode,\
                                 "enable_full_observation": enable_full_observation, "time_profiling_enable": time_profiling_enable,
@@ -180,17 +190,19 @@ class Simulator:
 
         if not self.is_full_observation:
             for irobot in robots_list:
-                self.robots_location[irobot], _ = self.robots[irobot].get_robot_position()
+                self.robots_location[irobot] = self.robots[irobot].location 
                 
         for irobot in robots_list: #self.robots:
             self.robots[irobot].plan_next_waypoint(t)
             if self.decision_making_mode == "bayes-swarm": 
+
                 data_packet = self.robots[irobot].share_information()
                 self.network.broadcast_information(t, irobot, data_packet)
                 neighbours_list = self.network.get_neighbours_list(irobot, self.robots_location)
-                for iirobot in neighbours_list:
+
+                for irobot in neighbours_list:
                     data_packet = self.network.get_information()
-                    self.robots[iirobot].receive_information(t, data_packet)
+                    self.robots[irobot].receive_information(t, data_packet)
 
             self.robots[irobot].update_reached_waypoint()
             observation_history, decision_counter, _ = self.robots[irobot].get_data()
@@ -199,7 +211,6 @@ class Simulator:
 
         ## Next decision-making
         is_not_terminated = True
-        #self.time_max = 40
         while is_not_terminated:
             if t >= self.time_max:
                 is_not_terminated = False
@@ -213,11 +224,11 @@ class Simulator:
             print("{} needs {:#.3f} secs".format(robot_key, time_to_simulate))
             for irobot in robots_list:
                 print("+ {} @ t = {:#.3f} secs ++++++++++++++++".format(irobot, t))
-                #robot_location, _ = self.robots[irobot].get_robot_position()
+                #robot_location = self.robots[irobot].location 
                 self.robots[irobot].step(time_to_simulate)
                 observation_history, decision_counter, _ = self.robots[irobot].get_data()
                 print("+ with Observations: {} and {} decisions ++++++++++++++++".format(np.shape(observation_history), decision_counter))
-                #robot_location, _ = self.robots[irobot].get_robot_position()
+                #robot_location = self.robots[irobot].location 
                 #print(irobot, ": ", robot_location,  ":", self.robots[irobot].get_robot_plan())
                 #os.system("pause")
                 self.found_source[irobot] = self.robots[irobot].check_found_source()
@@ -233,7 +244,8 @@ class Simulator:
 
                 ## Update robot locations in PyBullet
                 if self.simulation_mode == "pybullet":
-                    location, robot_heading = self.robots[irobot].get_robot_position()
+                    location = self.robots[irobot].location
+                    robot_heading = self.robots[irobot].robot_heading
                     robot_position = [location[0], location[1], self.elevation]
                     if self.simultion_motion_mode == "teleport":
                         p.resetBasePositionAndOrientation(bodyUniqueId=self.robot_body[irobot], posObj=robot_position, ornObj=self.cubeStartOrientation)
@@ -246,7 +258,7 @@ class Simulator:
             if save_robot_start_loc:
                 robot_locations = []
                 for irobot in robots_list:
-                    robot_location, _ = self.robots[irobot].get_robot_position()
+                    robot_location = self.robots[irobot].location 
                     robot_locations.append(robot_location)
                 savemat("BayesSwarm_StartLoc_Case.mat", {"start_locations": robot_locations})
                 quit()
@@ -256,7 +268,7 @@ class Simulator:
             if is_not_terminated == True:
                 if not self.is_full_observation:
                     for irobot in robots_list:
-                        self.robots_location[irobot], _ = self.robots[irobot].get_robot_position()
+                        self.robots_location[irobot] = self.robots[irobot].location 
                 
                 
                 for irobot in robots_list:
@@ -340,11 +352,13 @@ class Simulator:
         
         print("Simulation ended - ", self.file_name)
 
+
     def log_simulation(self):
         simulator_self = self
         with open(self.file_name+'.pickle', 'wb') as handle:
             pickle.dump(simulator_self, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
+
     def get_smallest_allowed_travel_time(self):
         time_resolution_order = 4
         time_to_source = self.get_all_time_to_source()
@@ -385,10 +399,12 @@ class Simulator:
         
         return time_to_simulate, key
 
+
     def get_all_time_to_source(self):
         for robot in self.robots:
             self.is_on_the_path[robot], self.time_to_source[robot] = self.robots[robot].get_time_to_source()
         return self.time_to_source
+
 
     def get_all_time_to_reach(self):
         for robot in self.robots:
@@ -396,11 +412,13 @@ class Simulator:
         
         return self.time_to_reach
 
+
     def check_all_found_source(self):
         for robot in self.robots:
             self.found_source[robot] = self.robots[robot].check_found_source()
 
         return self.found_source
+
 
     def get_ideal_times(self):
         dist_distribution = np.linalg.norm(self.start_locations - self.source_location,axis=1)
@@ -408,6 +426,7 @@ class Simulator:
 
         return np.median(time_distribution), np.mean(time_distribution),\
                np.min(time_distribution), np.max(time_distribution)
+
 
     def plot_robot_trajectory(self):
         is_tiled_plots = False
@@ -467,8 +486,6 @@ class Simulator:
 
         #plt.show()
 
-    def get_mission_metrics(self):
-        return self.mission_metrics_final
 
     def compute_start_locations(self, depot_mode="single-depot"):
         n_robots = self.n_robots
@@ -481,16 +498,19 @@ class Simulator:
             l_index = 0
             u_index = n_robot_per_corner
             start_locations[:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
+
             # Lower right corner
             location = np.array([self.arena_ub[0], self.arena_lb[1]])
             l_index = n_robot_per_corner
             u_index = 2 * n_robot_per_corner
             start_locations[l_index:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
+
             # Upper right corner
             location = np.array([self.arena_ub[0], self.arena_ub[1]])
             l_index = 2 * n_robot_per_corner
             u_index = 3 * n_robot_per_corner
             start_locations[l_index:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
+
             # Upper left corner
             location = np.array([self.arena_lb[0], self.arena_ub[1]])
             l_index = 3 * n_robot_per_corner
