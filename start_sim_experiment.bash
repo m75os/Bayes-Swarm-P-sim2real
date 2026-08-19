@@ -17,7 +17,7 @@ pkill -9 -f gzclient
 pkill -9 -f gzserver
 
 # For starting gazebo simulation
-export /opt/ros/humble/setup.bash
+source /opt/ros/humble/setup.bash
 export ROS_DOMAIN_ID=30 # For Turtlebot3
 export TURTLEBOT3_MODEL=burger # Must get turtlebot model before starting simulation 
 source /usr/share/gazebo/setup.sh # Must source simulation setup for gazebo to start properly

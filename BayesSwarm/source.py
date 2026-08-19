@@ -8,9 +8,6 @@ class Source:
     def __init__(self, id):
 
         self.id = id
-        self.source_init()
-       
-    def source_init(self): # Based on Case 1 in MRS paper, but adopted for IROS2020
 
         self.source_location    = np.array([1., 2.])
         self.time_max           = 100
@@ -24,31 +21,6 @@ class Source:
         self.local_penalizing_coef  = {"M": 1.2, "L": 2} #100
         self.communication_range    = 0.5
     
-   
-   def get_source_info(self):
-        
-        return  self.velocity, \
-                self.source_detection_range, \
-                self.source_location,   \
-                self.angular_range, \
-                self.time_max, \
-                self.arena_lb, \
-                self.arena_ub
-    
-   
-    def get_source_info_robot(self):
-        
-        return  self.velocity, \
-                self.source_detection_range
-
-    def get_source_info_mission(self):
-        
-        return self.source_location, self.time_max
-
-    def get_source_bayes_settings(self):
-        
-        return self.local_penalizing_coef
-
     def get_data_for_plot(self): # TODO: Adjust so that it reads csv file data instead
 
         N = 100

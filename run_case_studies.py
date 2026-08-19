@@ -17,7 +17,8 @@ def main():
     bayes_swarm_mode        = None         # ["local-penalty-sync", "local-penalty", "extended-local-penalty", None]
     filtering_mode          = "none" #"none"
     observation_frequency   = 1
-    optimizers              =[None, None]         # [None, "PSO"]
+    optimizer              = "COBYLA"        # [None, "PSO", "COBYLA", "SLSQP", "trust-constr", "L-BFGS-B"]
+    mu_optimizer = "L-BFGS-B"
     enable_full_observation = True  # [True, False]
     is_scout_team           = False
     debug                   = False
@@ -39,7 +40,7 @@ def main():
                     simulation_configs      = simulation_configs)
 
     sim.run()
-    sim.get_mission_metrics()
+    sim.mission_metrics_final() 
 
 if __name__ == "__main__":
     # execute only if run as a script
