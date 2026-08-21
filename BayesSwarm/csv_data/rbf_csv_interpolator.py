@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import RBFInterpolator
 
 # --- CONFIGURATION ---
-csv_filename = "20x20_position_3.csv"
+csv_filename = "20x20_position_1.csv"
 
 # --- LOAD DATA FROM CSV ---
 waypoints = []
@@ -62,6 +62,9 @@ grid_y = np.linspace(
 gx, gy = np.meshgrid(grid_x, grid_y)
 grid_points = np.column_stack([gx.ravel(), gy.ravel()])
 grid_z = rbf(grid_points).reshape(gx.shape)
+
+# Hard-cap the grid so it can never exceed your actual CSV data range
+grid_z = np.clip(grid_z, values.min(), values.max())
 
 # --- PLOTTING ---
 plt.figure(figsize=(8, 6))
