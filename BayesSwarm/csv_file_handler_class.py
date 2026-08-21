@@ -12,8 +12,11 @@ from scipy.interpolate import RBFInterpolator
 
 class csvFileHandler:
     """ 
-        Manages csv file reading and writing
-        csv files used to store (x, y, RSSI_value) data points
+    	Data for creating sources in gazebo are stored in csv files
+    	with the form (x, y, RSSI_value)
+    	
+    	This class chooses the source csv file and writes to 
+    	csv files for data logging
     """
 
     def __init__(self):
@@ -31,6 +34,7 @@ class csvFileHandler:
         self.FILENAME += "{self.HOUR}-{self.MINUTE}.csv"
         self.FULL_PATH = os.path.join(self.DIRECTORY, self.FILENAME)
 
+	# Footer is for adding post-mission metrics
         self.FILE_HEADER = ["x_coord, y_coord", "rssi_strength"]
         self.FILE_FOOTER = ["waypoint_num", "x_coord", "y_coord"]
 
@@ -93,7 +97,7 @@ class csvFileHandler:
                                                 'y_coord' : waypoint_array[i][1],
                                             })
     
-    def choose_csv_source(self):
+    def choose_csv_data_source(self):
         """ 
             Choose one of the csv files from csv_data to act as the 
             signal source
@@ -142,7 +146,7 @@ class csvFileHandler:
         file = csv_file_list[chosen_file_index]
         self.CSV_DATA_SOURCE = os.path.join(self.DIRECTORY, file)
 
-    def get_csv_arena_bounds(self):
+    def get_csv_data_coorinate_bounds(self):
         """
             Gets the maximum and minimum coordinate values from the csv source file
             to ensure that retrieve_rssi() doesn't search for coordinates that don't
@@ -224,8 +228,8 @@ class csvFileHandler:
         temp_x_coord_array = []
         temp_y_coord_array = []
 
-        temp_x_coord_array = [x for x, y in coordinate_array]
-        temp_y_coord_array = [y for x, y in coordinate_array]
+        temp_x_coord_array = [x for x, y in self.coordinate_array]
+        temp_y_coord_array = [y for x, y in self.coordinate_array]
 
         plt.plot(temp_x_coord_array, temp_y_coord_array, marker='o', color='k', linestyle='none')
         plt.show()
@@ -233,7 +237,9 @@ class csvFileHandler:
 #------------------------------------------------        
 csv_file_inst = csvFileHandler()
 
-csv_file_inst.choose_csv_source()
+csv_file_inst.choose_csv_data_source()
 csv_file_inst.get_csv_file_values()
+csv_file_inst.get_csv_data_coorinate_bounds()
+csv_file_inst.plot_csv_file_waypoints()
 rssi_value = csv_file_inst.retrieve_rssi(1, 1)
     

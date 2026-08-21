@@ -9,7 +9,16 @@ from BayesSwarm.util import tic, toc
 
 
 class Network:
-    def __init__(self, n_robots, is_full_observation=True, communication_range=20): #46 meters (150 feet)
+    """ 
+        Manages communication between robots if in swarm configuration
+        Shares location and path planning information if robots within 
+        'communication_range' of one another
+    """
+    def __init__(self, 
+                 n_robots, 
+                 is_full_observation=True, 
+                 communication_range=20): #46 meters (150 feet)
+
         self.is_full_observation = is_full_observation
         self.communication_range = communication_range
         self.n_robots = n_robots

@@ -12,10 +12,13 @@ from BayesSwarm.util import kl_divergence_norm
 
 
 class Filtering:
-    def __init__(self, prediction_threshold=0.5, prediction_score=True, information_score=False):
-        self.is_enabled_prediction_score = prediction_score
-        self.is_enabled_information_gain_score = information_score
+    def __init__(self, prediction_threshold=0.5):
+
         self.prediction_threshold = prediction_threshold
+
+        self.is_enabled_prediction_score = True 
+        self.is_enabled_information_gain_score = False 
+
         self.Delta = -1
         self.delta = -1
         self.jitter = 1e-10
@@ -24,6 +27,7 @@ class Filtering:
         is_informative = False
         self.gp_model = gp_model
         self.gp_model_extended = gp_model_extended
+
         if self.is_enabled_prediction_score:
             is_informative = self.prediction_score(x_star, y_star)
         if not is_informative and self.is_enabled_information_gain_score:
