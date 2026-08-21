@@ -14,31 +14,60 @@ from scipy.io import savemat
 from datetime import date
 
 from BayesSwarm.robot import Robot
-from BayesSwarm.source import Source
 from BayesSwarm.network import Network
+from BayesSwarm.arena_class import Arena
+from BayesSwarm.source import Source
 
 import time
 
 class Simulator:
+    """
+        Receives parameters from:
+            - Robot class
+            - Source class
+    """
     def __init__(self, 
-                n_robots, 
                 start_locations=None, 
-                decision_making_mode="bayes-swarm",
-                bayes_swarm_mode='scalable', 
-                alpha_mode='adaptive_time', 
-                filtering_mode="full", 
-                decision_horizon=None,
-                velocity=None, 
+                decision_making_mode="bayes-swarm", # XXX get from bayes_swarm
+                bayes_swarm_mode='scalable',        # XXX get from bayes_swarm
+                alpha_mode='adaptive_time',         # XXX get from bayes_swarm
+                filtering_mode="full",              # XXX get from filtering.py
                 observation_frequency=1, 
-                optimizers=[None, None], 
+                optimizers=[None, None],            # XXX get from bayes_swarm
                 enable_full_observation=True,
-                is_scout_team=False, 
+                is_scout_team=False,                
                 debug=False, 
                 time_profiling_enable=False, 
                 measurement_noise_rate=0,
                 depot_mode="single-depot", 
-                enable_log_simulation=True, 
-                simulation_configs=None):
+                enable_log_simulation=True): 
+        
+        self.TIME_MAX = 100 
+
+        #--------------------------
+        self.robot = Robot()
+        self.VELOCITY = self.robot.VELOCITY
+        self.N_ROBOTS = self.robot.N_ROBOTS
+        self.ANGLAR_RANGE = self.Robot.ANGULAR_RANGE 
+
+        #---------------------------
+        self.source = Source()
+        self.SOURCE_LOCATION = self.source.SOURCE_LOCATION
+        self.decision_horizon = self.source.DECISION_HORIZON # XXX get from bayes_swarm
+        self.decision_horizon_init = self.source.decision_horizon_init # XXX get from bayes_swarm
+        self.source_detection_range = self.source.source_detection_range
+        self.local_penalizing_coef = self.source.local_penalizing_coef 
+        self.communication_range = self.source.communication_range()
+
+       
+        #---------------------------
+        self.arena = Arena()
+        self.ARENA_UPPER_BOUND = self.arena.ARENA_UPPER_BOUND
+        self.ARENA_LOWER_BOUND = self.arena.ARENA_LOWER_BOUND
+        
+
+        self.decision_making_mode = decision_making_mode
+        self.alpha_mode = alpha_mode
 
         self.time_profiling_enable = time_profiling_enable
         self.debug = debug
@@ -47,23 +76,8 @@ class Simulator:
         self.is_plot_per_decision = True
         self.reached_robot_id = None
         self.is_scout_team = is_scout_team
-        self.n_robots = n_robots
         self.enable_plot = True
 
-# ----------- From Source class ------------
-
-        self.angular_range = self.source.angular_range
-        self.arena_lb = self.source_arena_lb
-        self.arena_ub = self.source.arena_ub
-
-        self.source_location = self.source.source_location
-        self.time_max = self.source.time_max
-        
-        self.velocity = self.source.velocity
-        self.decision_horizon = self.source.decision_horizon
-        self.decision_horizon_init = self.source.decision_horizon_init
-        self.source_detection_range = self.source.source_detection_range
-        
         if np.size(start_locations) > 1:
             if start_locations.all == None:
                 self.start_locations = self.compute_start_locations(depot_mode)
@@ -72,39 +86,33 @@ class Simulator:
         elif start_locations == None:
             self.start_locations = self.compute_start_locations(depot_mode)
 
-
-        self.local_penalizing_coef = self.source.local_penalizing_coef 
-        communication_range = self.source.communication_range()
-        if velocity != None:
-            self.source.velocity = velocity
-
-        if decision_horizon != None:
-            self.decision_horizon = decision_horizon
-        
         if observation_frequency > 0:
             self.observation_frequency = observation_frequency # [Hz]
         else:
             raise('Observation frequency must be a positive value!')
 
-        self.alpha_mode = alpha_mode
-        
         self.robots = {}
         self.time_to_source = {}
         self.time_to_reach = {}
         self.found_source = {}
         self.is_on_the_path = {}
-        self.decision_making_mode = decision_making_mode
         local_penalizing_coef = self.source.local_penalizing_coef 
-        self.bayes_swarm_args = {"bayes_swarm_mode": bayes_swarm_mode, "local_penalizing_coef": local_penalizing_coef,\
-                                "decision_making_mode": decision_making_mode, "filtering_mode": filtering_mode,\
-                                "enable_full_observation": enable_full_observation, "time_profiling_enable": time_profiling_enable,
-                                "optimizers": optimizers, "depot_mode": depot_mode}
+
+        self.bayes_swarm_args = {"bayes_swarm_mode": bayes_swarm_mode, 
+                                 "local_penalizing_coef": local_penalizing_coef,\
+                                 "decision_making_mode": decision_making_mode, 
+                                 "filtering_mode": filtering_mode,\
+                                 "enable_full_observation": enable_full_observation, 
+                                 "time_profiling_enable": time_profiling_enable,
+                                 "optimizers": optimizers, 
+                                 "depot_mode": depot_mode} 
+
         self.is_full_observation = enable_full_observation
         self.model_final = {}
 
-        self.network = Network(n_robots,
+        self.network = Network(self.n_robots,
                                is_full_observation=enable_full_observation,
-                               communication_range=communication_range)
+                               communication_range=self.communication_range)
 
         # Initialize each robot
         if enable_full_observation:
@@ -118,7 +126,7 @@ class Simulator:
                                       "computing_time_med": float("nan"),
                                       "computing_time_max": float("nan")}
 
-        for robot_id in range(n_robots):
+        for robot_id in range(self.n_robots):
             robot_name = 'robot-'+str(robot_id)
             self.robots_list = np.append(self.robots_list, robot_name)
             velocity = self.velocity
@@ -133,11 +141,11 @@ class Simulator:
                                         "filtering_mode": filtering_mode, "optimizers": optimizers,
                                         "enable_full_observation": enable_full_observation,
                                         "time_profiling_enable": time_profiling_enable}
-                self.robots[robot_name] = Robot(robot_id, n_robots, tmp_bayes_swarm_args, signal_source,
+                self.robots[robot_name] = Robot(robot_id, self.n_robots, tmp_bayes_swarm_args, signal_source,
                                                 velocity, start_location, source_detection_range,
                                                 observation_frequency, measurement_noise_rate)
             else:
-                self.robots[robot_name] = Robot(robot_id, n_robots, self.bayes_swarm_args, signal_source,
+                self.robots[robot_name] = Robot(robot_id, self.n_robots, self.bayes_swarm_args, signal_source,
                                                 velocity, start_location, source_detection_range,
                                                 observation_frequency, measurement_noise_rate)
             self.time_to_source[robot_name] = float('nan')
@@ -146,32 +154,7 @@ class Simulator:
             self.found_source[robot_name] = [False, float('nan')]
             self.mission_metrics[robot_name] = [-1, -1, -1, -1]  # Time, MAE, Computing Time, Counter
 
-            # Initiate robots
-            if self.simulation_mode == "pybullet":
-                rotation_vector = [0, 0, 0] 
-                for i in range(len(rotation_vector)):
-                    rotation_vector[i] = config["rotation_vector_robot"][i]*np.pi/180
-                self.cubeStartOrientation = p.getQuaternionFromEuler(rotation_vector)
-                
-                robot_position = [start_location[0], start_location[1], self.elevation]  
-                if self.simultion_motion_mode == "teleport":
-                    self.robot_body[robot_name] = p.createMultiBody(baseMass=1,
-                                        baseInertialFramePosition=[0, 0, 0],
-                                        baseVisualShapeIndex=self.visualShapeId1,
-                                        basePosition=robot_position,
-                                        baseOrientation=self.cubeStartOrientation,
-                                        useMaximalCoordinates=True)
-                else:
-                    self.object_id = p.loadURDF("BayesSwarm/object_files/arial_vehicle.urdf", basePosition=robot_position, baseOrientation=self.cubeStartOrientation)
-                    self.robot_body[robot_name] = p.createConstraint(self.object_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0],[0, 0, 0], [0,0,0])
-                    p.changeConstraint(self.robot_body[robot_name], robot_position)
-
-                p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-                p.setGravity(0, 0, 0)
-                p.setRealTimeSimulation(1)
-                p.stepSimulation()
-                time.sleep(1)
-        dir_name = 'output'
+       dir_name = 'output'
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         today = date.today().strftime("%Y%b%d")  
@@ -179,13 +162,12 @@ class Simulator:
         if self.is_save_fig:
             self.fig_counter = 0
 
-    def run(self):
+    def run(self): # Use for gazebo implementation
         t = 0
         is_successed = False
         robot_successed = 0
 
         ## First decision-making 
-        # robots_list = self.robots:
         robots_list = list(self.robots_list) #np.random.shuffle(self.robots_list) #flip
 
         if not self.is_full_observation:
@@ -212,7 +194,7 @@ class Simulator:
         ## Next decision-making
         is_not_terminated = True
         while is_not_terminated:
-            if t >= self.time_max:
+            if t >= self.TIME_MAX:
                 is_not_terminated = False
                 break
 
@@ -224,7 +206,6 @@ class Simulator:
             print("{} needs {:#.3f} secs".format(robot_key, time_to_simulate))
             for irobot in robots_list:
                 print("+ {} @ t = {:#.3f} secs ++++++++++++++++".format(irobot, t))
-                #robot_location = self.robots[irobot].location 
                 self.robots[irobot].step(time_to_simulate)
                 observation_history, decision_counter, _ = self.robots[irobot].get_data()
                 print("+ with Observations: {} and {} decisions ++++++++++++++++".format(np.shape(observation_history), decision_counter))
@@ -288,9 +269,6 @@ class Simulator:
                             self.reached_robot_id = irobot
                             self.plot_robot_trajectory()
 
-            #if t > 45:
-            #    self.debug = True
-
         ## Log print screen in a text file
         stdoutOrigin=sys.stdout 
         sys.stdout = open(self.file_name+"_log.txt", "w")
@@ -312,14 +290,14 @@ class Simulator:
             self.mission_metrics[robot_successed][:2] = [mission_time, mapping_error] #Time, MAE, Computing Time, COunter
             print("+ {} found the source at time {:#.3f} out of {:#.3f}. It is located {:#.3f} meters of the source.\
                    Ideal time to find this source is {:#.3f}"
-                  .format(robot_successed, t, self.time_max, robot_dist_to_source,ideal_time))
+                  .format(robot_successed, t, self.TIME_MAX, robot_dist_to_source,ideal_time))
             print("+ Mission Performance Metrics -- Completion Time: {:#.3f}; Mapping Error (MAE) {:#.3f}."
                   .format(mission_time, mapping_error))
             self.mission_metrics_final = {"mission_time":mission_time, "mapping_error":mapping_error,
                                           "computing_time_med": np.median(decision_computing_time),
                                           "computing_time_max": np.max(decision_computing_time)}
         else:
-            print("+ Timeout ({:#.3f}/{:#.3f}): Search mission failed!".format(t, self.time_max))
+            print("+ Timeout ({:#.3f}/{:#.3f}): Search mission failed!".format(t, self.TIME_MAX))
             found_source = self.found_source
             key = min(found_source.keys(), key=(lambda k: found_source[k][1]))
             print("+ The closest robot to the target is {} with {:#.3f} meters distance.".format(key, found_source[key][1]))
@@ -354,9 +332,8 @@ class Simulator:
 
 
     def log_simulation(self):
-        simulator_self = self
         with open(self.file_name+'.pickle', 'wb') as handle:
-            pickle.dump(simulator_self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
 
     def get_smallest_allowed_travel_time(self):
@@ -494,25 +471,25 @@ class Simulator:
         if depot_mode == "four-depot":
             n_robot_per_corner = n_robots / 4
             # Lower left corner
-            location = np.array([self.arena_lb[0], self.arena_lb[1]])
+            location = np.array([self.ARENA_LOWER_BOUND[0], self.ARENA_LOWER_BOUND[1]])
             l_index = 0
             u_index = n_robot_per_corner
             start_locations[:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
 
             # Lower right corner
-            location = np.array([self.arena_ub[0], self.arena_lb[1]])
+            location = np.array([self.ARENA_UPPER_BOUND[0], self.ARENA_LOWER_BOUND[1]])
             l_index = n_robot_per_corner
             u_index = 2 * n_robot_per_corner
             start_locations[l_index:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
 
             # Upper right corner
-            location = np.array([self.arena_ub[0], self.arena_ub[1]])
+            location = np.array([self.ARENA_UPPER_BOUND[0], self.ARENA_UPPER_BOUND[1]])
             l_index = 2 * n_robot_per_corner
             u_index = 3 * n_robot_per_corner
             start_locations[l_index:u_index, :] = np.tile(location, (n_robot_per_corner, 1))
 
             # Upper left corner
-            location = np.array([self.arena_lb[0], self.arena_ub[1]])
+            location = np.array([self.ARENA_LOWER_BOUND[0], self.ARENA_UPPER_BOUND[1]])
             l_index = 3 * n_robot_per_corner
             n_robot_per_corner = n_robots - 3 * n_robot_per_corner
             start_locations[l_index:, :] = np.tile(location, (n_robot_per_corner, 1))

@@ -11,64 +11,93 @@ from BayesSwarm.util import kl_divergence_norm
 
 from BayesSwarm.bayes_swarm import BayesSwarm
 from BayesSwarm.filtering import Filtering
+from BayesSwarm.arena_class import Arena
+from BayesSwarm.source import Source
 
 
-class Robot:
+class Robot: # Enter BayesSwarm class as argument
     def __init__(self, 
                     id, 
-                    n_robots, bayes_swarm_args, source,
-                    velocity=1, 
-                    start_location=[0,0], 
-                    source_detection_range=1e-1,
-                    observation_frequency=1, 
-                    measurement_noise_rate=0):
+                    n_robots, 
+                    bayes_swarm_args, 
+                    start_location=[0,0]):
 
-        self.is_enabled_full_log = False
+        #------------- input arguments -----------------------------
         self.id = id
-        self.n_robots = n_robots
-        self.velocity = velocity # [m/s]
-        self.traveled_distance = 0 # [m]
-        self.decision_counter = 0
-        self.decision_computing_time = []
-        
-        self.penalty_analysis_enable = False
+        self.N_ROBOTS = n_robots
+
+        local_penalizing_coef = bayes_swarm_args["local_penalizing_coef"]
+        bayes_swarm_mode = bayes_swarm_args["bayes_swarm_mode"]
+        time_profiling_enable = bayes_swarm_args["time_profiling_enable"]
+        depot_mode = bayes_swarm_args["depot_mode"]
+        self.decision_making_mode = bayes_swarm_args["decision_making_mode"]
+        optimizers = bayes_swarm_args["optimizers"]
+        filtering_mode = bayes_swarm_args["filtering_mode"]
 
         self.location = np.array(start_location)
+
+
         self.trajectory_history = np.array(start_location)
+        self.search_space_dimension = len(start_location)
+
+        #------------ hard-coded values ---------------------------
+
+        self.ANGULAR_RANGE = np.array([0, (np.pi/2)])
+        self.VELOCITY = 1 # [m/s]
+
+        self.SOURCE_DETECTION_RANGE = 1e-1
+
+        self.OBSERVATION_FREQUENCY = 1
+        self.MEASUREMENT_NOISE_RATE = 0
+
+        self.MOVEMENT_RESOLUTION = 1e-4 # [m]
+
+        self.REACHED_TIME_RESOLUTION = self.MOVEMENT_RESOLUTION * self.VELOCITY # [sec]
+
+        #------------------ from Arena() class -------------------
+
+        self.arena = Arena()
+        self.ARENA_UPPER_BOUND = self.arena.ARENA_UPPER_BOUND
+        self.ARENA_LOWER_BOUND = self.arena.ARENA_LOWER_BOUND
+
+        #----------------- from Source() class ------------------
+
+        self.source = Source()
+        self.SOURCE_LOCATION = self.source.SOURCE_LOCATION
+        self.SOURCE_DETECTION_RANGE = self.source.SOURCE_DETECTION_RANGE
+
+        #----------------- boolean values -----------------------
+        self.is_enabled_full_log = False
+        self.penalty_analysis_enable = False
+        self.is_found_source = False
+        self.is_enabled_filtering = False
+        self.is_filtering_over_received_information = False
+        self.is_sharing_observation = True
+
+        #------------------ decision-making -----------------------
+
+        self.decision_counter = 0
+        self.decision_computing_time = []
+
+        #-------------------- waypoints -------------------------
         
         self.waypoint_start = self.location
         self.waypoint_end = []
         self.waypoint_history = self.waypoint_start
+ 
+       
         self.movement_direction = []
         self.robot_heading = np.array([0,0])
-        self.movement_resolution = 1e-4 # [m]
         self.res_movement_time = 0
-        self.measurement_noise_rate = measurement_noise_rate 
-        self.reached_time_resolution = self.movement_resolution * self.velocity # [sec]
-        self.search_space_dimension = len(start_location)
-        if observation_frequency > 0:
-            self.observation_frequency = observation_frequency # [Hz]
-        else:
-            raise('Observation frequency must be a positive value!')
+
+        self.traveled_distance = 0 # [m]
 
         self.movement_line = []
        
-        # ------------ Source-based initialization ---------------- 
-        self.source = source
-        self.angular_range = self.source.angular_range
-        self.arena_lb = self.source.arena_lb
-        self.arena_ub = self.source.arena_ub
-        self.source_location = self.source.source_location
-        self.time_max = self.source.time_max
-        self.arena_bound = self.arena_ub - self.arena_lb
-        #----------------------------------------------------------
-
-        self.source_detection_range = source_detection_range
-        self.is_found_source = False
         self.dist_to_source = float('nan')
         self.data_packets_all = {}
         self.peers_plan = {}
-        for i in range(n_robots):
+        for i in range(self.N_ROBOTS):
             if i != id:
                 self.data_packets_all['robot-'+str(i)] = {}
                 self.peers_plan['robot-'+str(i)] = []
@@ -81,9 +110,6 @@ class Robot:
         self.observation_history_shared = []
         self.observation_history_self = self.observation_last
         
-        filtering_mode = bayes_swarm_args["filtering_mode"]
-        self.is_enabled_filtering = False
-        self.is_filtering_over_received_information = False
         if filtering_mode == "self_observation":
             self.is_enabled_filtering = True
         elif filtering_mode == "shared_observation":
@@ -97,19 +123,12 @@ class Robot:
         if self.is_enabled_filtering:
             self.filtering = Filtering(self.prediction_gap_threshold)
         
-        local_penalizing_coef = bayes_swarm_args["local_penalizing_coef"]
-        bayes_swarm_mode = bayes_swarm_args["bayes_swarm_mode"]
-        time_profiling_enable = bayes_swarm_args["time_profiling_enable"]
-        depot_mode = bayes_swarm_args["depot_mode"]
-        self.decision_making_mode = bayes_swarm_args["decision_making_mode"]
-        optimizers = bayes_swarm_args["optimizers"]
-        self.is_sharing_observation = True
+
         if bayes_swarm_mode == "pure-exploitative-self-interest":
             self.is_sharing_observation = False
             bayes_swarm_mode = "pure-explorative"
 
-        if self.decision_making_mode == "bayes-swarm":
-            self.decision_making = BayesSwarm(self, self.source, self.time_max, local_penalizing_coef,
+            self.bayes_swarm = BayesSwarm(self, local_penalizing_coef, #TODO: fix initialization
                                               bayes_swarm_mode, optimizers=optimizers,
                                               time_profiling_enable=time_profiling_enable,
                                               depot_mode=depot_mode)
@@ -157,14 +176,14 @@ class Robot:
 
         mu = 2
         step_length_max = 0.2
+        rho = 0.2
 
         if self.decision_making_mode == "random":
-            self.waypoint_end = np.random.rand(1,2)[0] * (self.arena_ub-self.arena_lb) + self.arena_lb
+            self.waypoint_end = np.random.rand(1,2)[0] * (self.ARENA_UPPER_BOUND - self.ARENA_LOWER_BOUND) + self.ARENA_LOWER_BOUND
 
         elif self.decision_making_mode == "corr-random-walk":
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
-            rho = 0.2
             r = np.random.rand()
             dtheta = 2 * np.arctan2( (1-rho)*np.tan(np.pi * (r-0.5)), (1+rho) ) 
 
@@ -177,7 +196,7 @@ class Robot:
             displacement = np.array([step_length * np.cos(theta), step_length * np.sin(theta)])
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
-            self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+            self.waypoint_end = np.clip(dummy_waypoint_end, self.ARENA_LOWER_BOUND, self.ARENA_UPPER_BOUND)
 
         elif self.decision_making_mode == "levy-walk":
             # Based on Experimental comparison of random search strategies for 
@@ -190,12 +209,11 @@ class Robot:
             displacement = np.array([step_length * np.cos(theta), step_length * np.sin(theta)])
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
-            self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+            self.waypoint_end = np.clip(dummy_waypoint_end, self.ARENA_LOWER_BOUND, self.ARENA_UPPER_BOUND)
 
         elif self.decision_making_mode == "levy-walk-crw":
             # Based on Experimental comparison of random search strategies for 
             # multi-robot based odour finding without wind information
-            rho = 0.2
             r = np.random.rand()
             dtheta = 2 * np.arctan2( (1-rho)*np.tan(np.pi * (r-0.5)), (1+rho) ) 
             if np.size(self.waypoint_end) > 1:
@@ -208,7 +226,7 @@ class Robot:
             displacement = np.array([step_length * np.cos(theta), step_length * np.sin(theta)])
             print(displacement, self.waypoint_end)
             dummy_waypoint_end = self.location + displacement
-            self.waypoint_end = np.clip(dummy_waypoint_end, self.arena_lb, self.arena_ub)
+            self.waypoint_end = np.clip(dummy_waypoint_end, self.ARENA_LOWER_BOUND, self.ARENA_UPPER_BOUND)
 
         else:
             X_robot = []
@@ -223,8 +241,8 @@ class Robot:
                 X_robot = X_robot.reshape(2,1)
                 y_robot = observation_history[2]
             covered_lb, covered_ub = self.get_bounded_space()
-            self.decision_making.set_covered_area(covered_lb, covered_ub)
-            self.waypoint_end = self.decision_making.get_next_point(t, X_robot, y_robot)
+            self.bayes_swarm.set_covered_area(covered_lb, covered_ub)
+            self.waypoint_end = self.bayes_swarm.get_next_point(t, X_robot, y_robot)
         computing_time = toc()
 
         if self.penalty_analysis_enable and t > 45:
@@ -268,6 +286,7 @@ class Robot:
 
         return np.hstack((self.waypoint_start, self.waypoint_end))
     
+    # ------------------------------ Network-related actions ----------------------------------
     def share_information(self):
         plan = self.get_robot_plan()
         belief_model = self.decision_making.get_expected_source_info()
@@ -293,7 +312,7 @@ class Robot:
             # mu2, sig2 = self.decision_making.gp_mu.predict(x_star)
             # q = (mu2, sig2)
             # Delta = kl_divergence_norm(x_star, p, q)
-            x_star_self = self.decision_making.get_expected_source()
+            x_star_self = self.bayes_swarm.expected_source_location 
             is_informative = False
             if np.size(x_star_self) == 0:
                 is_informative = True
@@ -308,13 +327,14 @@ class Robot:
         elif np.size(data_observation) > 0:
             self.observation_history = np.vstack((self.observation_history, data_observation))
         
-        self.decision_making.set_local_source(known_fake_source)
+        self.bayes_swarm.set_local_source(known_fake_source)
 
         if np.size(self.observation_history_shared) > 0:
             self.observation_history_shared = np.vstack((self.observation_history_shared, data_observation))
         else:
             self.observation_history_shared = data_observation
         
+    #------------------------------------------------------------------------------------------
     def get_bounded_space(self):
         covered_ub = np.max(self.trajectory_history, axis=0)
         covered_lb = np.min(self.trajectory_history, axis=0)
@@ -339,9 +359,9 @@ class Robot:
         return observation_history, self.decision_counter, self.decision_computing_time
 
     def motion_model(self, movement_time):
-        traveled_distance = self.velocity * movement_time
+        traveled_distance = self.VELOCITY * movement_time
         #print(self.location, ' V ', self.robot_heading)
-        self.location = self.location + self.robot_heading * traveled_distance
+        self.location = self.location + (self.robot_heading * traveled_distance)
         #print(self.location, ' >> ', traveled_distance)
         self.traveled_distance += traveled_distance
         self.trajectory_history = np.vstack((self.trajectory_history, self.location))
@@ -353,15 +373,15 @@ class Robot:
         #self.is_enabled_filtering = False
         is_informative = True
         sensor_value = self.source.measure(self.location)
-        if self.measurement_noise_rate > 0:
-            sensor_value += self.noise_model(self.measurement_noise_rate * sensor_value)
+        if self.MEASUREMENT_NOISE_RATE > 0:
+            sensor_value += self.noise_model(self.MEASUREMENT_NOISE_RATE * sensor_value)
         self.observation_last = np.hstack((self.location, sensor_value, self.id))
         
         if self.is_enabled_filtering:
             x_star = self.observation_last[:2]
             y_star = self.observation_last[2]
-            gp_model = self.decision_making.gp_mu
-            gp_model_extended = self.decision_making.gp_mu_extended
+            gp_model = self.bayes_swarm.gp_mu
+            gp_model_extended = self.bayes_swarm.gp_mu_extended
             if np.size(self.observation_history) > 4:
                 is_informative = self.filtering.filter_infomration(gp_model, gp_model_extended, x_star, y_star)
             
@@ -378,7 +398,7 @@ class Robot:
     def update_movement_direction(self):
         delta_waypoints = self.waypoint_end-self.waypoint_start
         distance_waypoints = np.linalg.norm(delta_waypoints)
-        if distance_waypoints > self.movement_resolution:
+        if distance_waypoints > self.MOVEMENT_RESOLUTION:
             self.movement_direction = delta_waypoints/distance_waypoints
         else:
             self.movement_direction = np.zeros((1,self.search_space_dimension))
@@ -387,10 +407,7 @@ class Robot:
     
     def get_time_to_reach(self):
         dist = np.linalg.norm(self.waypoint_end - self.location)
-        if self.velocity > 0:
-            time_to_reach = dist / self.velocity
-        else:
-            time_to_reach = float('nan')
+        time_to_reach = dist / self.VELOCITY 
 
         return time_to_reach
 
@@ -399,17 +416,17 @@ class Robot:
         self.movement_line = get_line_equation(self.waypoint_start, self.waypoint_end)
         dist_separation = get_distance_from_line(self.movement_line, self.source_location)
         time_to_source = float('nan')
-        if dist_separation <= self.source_detection_range: # Robot found the source.
+        if dist_separation <= self.SOURCE_DETECTION_RANGE: # Robot found the source.
             is_on_the_path, dist_to_source = check_point_is_between_two_points(self.waypoint_start, self.waypoint_end, self.source_location)
-            if is_on_the_path and self.velocity > 0:
-                time_to_source = dist_to_source / self.velocity
+            if is_on_the_path and self.VELOCITY > 0:
+                time_to_source = dist_to_source / self.VELOCITY 
             
         return is_on_the_path, time_to_source
 
     def check_found_source(self):
         is_found_source = False
         dist_to_source = np.linalg.norm(self.source_location - self.location)
-        if dist_to_source <= self.source_detection_range: # Robot found the source.
+        if dist_to_source <= self.SOURCE_DETECTION_RANGE: # Robot found the source.
             print("Robot ", self.id, " found the source!\n")
             is_found_source = True
         self.is_found_source = is_found_source
@@ -419,7 +436,7 @@ class Robot:
 
     def is_reached_time(self):
         is_reached_to_waypoint = False
-        if self.get_time_to_reach() <= self.reached_time_resolution:
+        if self.get_time_to_reach() <= self.REACHED_TIME_RESOLUTION:
             is_reached_to_waypoint = True
         
         return is_reached_to_waypoint
@@ -445,23 +462,23 @@ class Robot:
 
     def get_belief_model(self):
         
-        return self.decision_making.gp_mu
+        return self.bayes_swarm.gp_mu
 
     def get_knowledge_uncertainty_model(self):
         
-        return self.decision_making.gp_sigma
+        return self.bayes_swarm.gp_sigma
 
     def get_expected_source(self):
 
-        return self.decision_making.get_expected_source()
+        return self.bayes_swarm.get_expected_source()
 
     def gp_contour_data(self, model, X1, X2):
         N, _ = np.shape(X1)
         X = np.hstack((X1.reshape(-1,1), X2.reshape(-1,1)))
         if model == "belief":
-            Y_mean, Y_std = self.decision_making.gp_mu.predict(X)
+            Y_mean, Y_std = self.bayes_swarm.gp_mu.predict(X)
         else:
-            Y_mean, Y_std = self.decision_making.gp_sigma.predict(X)
+            Y_mean, Y_std = self.bayes_swarm.gp_sigma.predict(X)
 
         Y_mean = Y_mean.reshape(N,-1)
         Y_std = Y_std.reshape(N,-1)
@@ -469,15 +486,15 @@ class Robot:
         return Y_mean, Y_std
 
     def get_ideal_time(self):
-        if self.velocity == 0:
+        if self.VELOCITY == 0:
             ideal_time = float('nan')
         else:
-            ideal_time = np.linalg.norm(self.trajectory_history[0,:] - self.source_location) / self.velocity
+            ideal_time = np.linalg.norm(self.trajectory_history[0,:] - self.source_location) / self.VELOCITY 
 
         return ideal_time
 
     def save_time_profiling(self, file_name):
-        self.decision_making.save_time_profiling(file_name)
+        self.bayes_swarm.save_time_profiling(file_name)
 
     def perform_penalty_analysis(self, next_location=[]):
         X1, X2, Y = self.source.get_data_for_plot()

@@ -14,36 +14,53 @@ from pyswarm import pso
 from BayesSwarm.gp_modeling import GpModeling
 from BayesSwarm.gpy_modeling import GpyModeling
 from BayesSwarm.util import *
+from BayesSwarm.simulator import Simulator
+from BayesSwarm.source import Source
+from BayesSwarm.arena_class import Arena
 
 class BayesSwarm:
     def __init__(   self, 
-                    robot, 
-                    source, 
-                    time_max, 
+                    Robot, # Robot class
                     local_penalizing_coef,
                     bayes_swarm_mode="local-penalty", 
                     alpha_mode="adaptive",
                     decision_horizon_mode="constant", 
-                    alpha=0.1, 
-                    beta=1, 
-                    optimizer = "COBYLA"
-                    mu_optimizer = "L-BFGS-B" # ["L-BFGS-B", "Nelder-Mead", "TNC"]
-                    debug=False, 
+                    optimizer = "COBYLA",
+                    mu_optimizer = "L-BFGS-B", # ["L-BFGS-B", "Nelder-Mead", "TNC"]
                     time_profiling_enable=False,
                     depot_mode="single-depot"):
 
-        self.robot = robot
-        self.source = source
-        self.time_max = time_max
+        self.simulator = Simulator()
+        self.TIME_MAX = self.simulator.TIME_MAX
+
+        self.source = Source()
+        self.SOURCE_DETECTION_RANGE = self.source.SOURCE_DETECTION_RANGE
+
+        self.arena = Arena()
+        self.ARENA_UPPER_BOUND = self.arena.ARENA_UPPER_BOUND
+        self.ARENA_LOWER_BOUND = self.arena.ARENA_LOWER_BOUND
+
+        self.robot = Robot # Robot class
+        self.robot_id = self.robot.id
+        self.location_current = self.robot.location
+        self.robot_heading = self.robot.robot_heading
+        self.ROBOT_VELOCITY = self.robot.VELOCITY 
+        self.ANGULAR_RANGE = self.robot.ANGULAR_RANGE
+
+        self.decision_horizon_init = 10
+        self.decision_horizon = 10
+
+
+
         self.local_penalizing_coef = local_penalizing_coef
         self.bayes_swarm_mode = bayes_swarm_mode
         self.alpha_mode = alpha_mode
         self.decision_horizon_mode = decision_horizon_mode 
-        self.alpha = alpha
-        self.beta = beta
+        self.alpha = 0.1 
+        self.beta = 1 
         self.optimizer = optimizer
         self.mu_optimizer = mu_optimizer
-        self.debug = debug
+        self.debug = False 
         self.time_profiling_enable = time_profiling_enable
         self.depot_mode = depot_mode
 
@@ -58,8 +75,8 @@ class BayesSwarm:
 
         self.SAFE_DISTANCE = 0.1
         self.MIN_DISTANCE_TO_FAKE_SOURCE = 100
-        self.min_dist_max = 100
-        self.min_distance_to_xbest = self.min_dist_max
+        self.MIN_DIST_MAX = 100
+        self.min_distance_to_xbest = self.MIN_DIST_MAX 
 
         self.is_non_batch_mode = True
 
@@ -97,20 +114,6 @@ class BayesSwarm:
         self.Gamma = -1.
         self.jitter = 1e-3
 
-
-        self.robot_id = self.robot.id
-        self.location_current = robot.location
-        self.robot_heading = robot.robot_heading
-
-        self.angular_range = source.angular_range
-        self.arena_lb = source.arena_lb
-        self.arena_ub = source.arena_ub
-
-        source_detection_range = source.source_detection_range
-
-        self.robot_velocity = source.velocity 
-        self.decision_horizon = source.decision_horizon
-        self.decision_horizon_init = source.decision_horizon_init
         self.search_dim = 2 # 2D Space
         self.expected_source_location = []
         self.expected_source_location_prv = []
@@ -144,7 +147,7 @@ class BayesSwarm:
         self.robot_movement_min = self.robot_velocity / self.observation_frequency
         if self.decision_horizon * self.observation_frequency < 1:
             raise("Increase decision horizon or observation frequency; or decrease the robot velocity!")
-        self.displacement_threshold_min = source_detection_range * 0.9
+        self.displacement_threshold_min = self.SOURCE_DETECTION_RANGE * 0.9
         
         self.is_robot_stuck_in_local = False
         self.is_sync_decision_making = False
@@ -251,7 +254,7 @@ class BayesSwarm:
                 dummy_time = toc()
                 self.time_profiling["cal_next_location"].append(dummy_time)
                 
-            if self.is_robot_stuck_in_local == True:
+            if self.is_robot_stuck_in_local:
                 #dx = self.robot_velocity * self.decision_horizon
                 dx = self.expected_source_location - self.location_current
                 if np.linalg.norm(dx) < self.displacement_threshold_min:                    
@@ -273,7 +276,7 @@ class BayesSwarm:
                     self.next_point_magnitude = self.gp_mu.predict(self.next_point)
                 self.is_robot_stuck_in_local = False
                 
-            if self.debug == True:
+            if self.debug:
                 print("=== Acquisition Function ====")
                 print("xbest: ", self.expected_source_location)
                 print("Current Location: ", self.location_current)
@@ -356,15 +359,14 @@ class BayesSwarm:
         return next_point, next_point_magnitude, result
             
     def save_time_profiling(self, file_name):
-        time_profiling = self.time_profiling
         with open(file_name+'_time_profiling.pickle', 'wb') as handle:
-            pickle.dump(time_profiling, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.time_profiling, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def set_covered_area(self, covered_lb, covered_ub):
         self.covered_lb = covered_lb
         self.covered_ub = covered_ub
         
-    def get_first_decision(self, depot_mode="single-depot"):
+    def get_first_decision(self, depot_mode="single-depot"): # May need for simulation
         """
         Args:
             depot_mode (str): Starting point mode: "single-depot", "four-depot" 
@@ -749,8 +751,8 @@ class BayesSwarm:
         
     def update_decision_horizon(self,t=-1):
         if self.decision_horizon_mode == "adaptive":
-            time_max = self.time_max
-            self.decision_horizon = 2*self.decision_horizon_init / (1 + np.exp(t/time_max - 1/3))
+            TIME_MAX = self.TIME_MAX
+            self.decision_horizon = 2*self.decision_horizon_init / (1 + np.exp(t/TIME_MAX - 1/3))
 
     def update_min_distance_to_xbest(self, X_peers):
         if np.size(X_peers) > 0 and np.size(self.expected_source_location) > 0:
@@ -759,7 +761,7 @@ class BayesSwarm:
                 self.MIN_DISTANCE_TO_FAKE_SOURCE = np.min(distance.cdist(self.expected_source_location.reshape(-1,2), self.known_fake_source.reshape(-1,2)))
             self.min_distance_to_xbest = np.min(distance.cdist(self.expected_source_location.reshape(-1,2), X_peers.reshape(-1,2)))
         else:
-            self.min_distance_to_xbest = self.min_dist_max
+            self.min_distance_to_xbest = self.MIN_DIST_MAX 
 
 
     def update_exploitation_weight(self, t=-1):
@@ -774,7 +776,7 @@ class BayesSwarm:
             float: The exploitation weight (alpha).
         """
         if self.alpha_mode == 'adaptive':
-            time_max = self.time_max * 0.1
+            TIME_MAX = self.TIME_MAX * 0.1
             if self.is_non_batch_mode:
                 # weight_max = 1
                 if self.MIN_DISTANCE_TO_FAKE_SOURCE < 2.5 * self.SAFE_DISTANCE:
@@ -785,15 +787,15 @@ class BayesSwarm:
                 else:
                     # weight = weight_max * np.exp(-10*(self.min_distance_to_xbest/(np.sqrt(2)*self.SAFE_DISTANCE))**2)
                     #print(self.MIN_DISTANCE_TO_FAKE_SOURCE, ":", self.min_distance_to_xbest, ": weight ", weight)
-                    #self.alpha = (weight_max - weight) #/ (1 + np.exp(-10*(t/time_max - 1/3)))
+                    #self.alpha = (weight_max - weight) #/ (1 + np.exp(-10*(t/TIME_MAX - 1/3)))
                     if self.min_distance_to_xbest >= 2 * self.SAFE_DISTANCE:
                         self.alpha = 0.8 #
                     else:
-                        self.alpha = 1 / (1 + np.exp(-10*(t/time_max - 1/3)))
+                        self.alpha = 1 / (1 + np.exp(-10*(t/TIME_MAX - 1/3)))
                 #weight = np.exp(-(self.min_distance_to_xbest/(4*self.SAFE_DISTANCE))**2)
                 #self.beta = 1 - self.alpha
             else:
-                self.alpha = 1 / (1 + np.exp(-10*(t/time_max - 1/3)))
+                self.alpha = 1 / (1 + np.exp(-10*(t/TIME_MAX - 1/3)))
             #self.alpha = 0.99 * self.close
             #print(self.alpha)
         return self.alpha
